@@ -1,7 +1,7 @@
 /**
- * Adapter Azure DevOps : commits + pull requests de l'année, filtrables
- * par un ou plusieurs auteurs (`users` = e-mails ou display names).
- * Sans filtre : auteur du jeton pour les commits ; PRs du créateur correspondant.
+ * Adapter Azure DevOps : commits + pull requests de l'année du (des)
+ * auteur(s) ciblé(s). Sans `users` : titulaire du jeton uniquement —
+ * jamais tous les commits de l’organisation.
  */
 
 import { correspondUser, normaliserUsers } from '../users.mjs';
@@ -65,10 +65,23 @@ export async function collecterAzureDevops(source) {
     me?.authenticatedUser?.properties?.Account?.['$value'] ??
     me?.authenticatedUser?.providerDisplayName ??
     null;
+  const tokenDisplay =
+    me?.authenticatedUser?.providerDisplayName ??
+    me?.authenticatedUser?.customDisplayName ??
+    null;
 
-  /** Auteurs de commit à interroger côté API (un passage par auteur). */
-  const auteursCommit =
-    users.length > 0 ? users : tokenEmail ? [String(tokenEmail)] : [];
+  /** Toujours un filtre : users déclarés, sinon titulaire du jeton. Jamais « tout le monde ». */
+  const filtre =
+    users.length > 0
+      ? users
+      : [tokenEmail, tokenDisplay]
+          .map(v => (v == null ? '' : String(v).trim()))
+          .filter(Boolean);
+  if (filtre.length === 0) {
+    throw new Error(
+      'azuredevops: impossible de résoudre le titulaire du jeton (pose users[])'
+    );
+  }
 
   for (const repo of repos) {
     const project = repo.project?.name;
@@ -76,7 +89,7 @@ export async function collecterAzureDevops(source) {
     if (!project || !repoId) continue;
 
     try {
-      if (auteursCommit.length === 0) {
+      for (const auteur of filtre) {
         const commits = await adoGet(
           source.org,
           source.token,
@@ -84,38 +97,16 @@ export async function collecterAzureDevops(source) {
           {
             'searchCriteria.fromDate': from,
             'searchCriteria.toDate': to,
+            'searchCriteria.author': auteur,
             $top: '100',
           }
         );
         for (const c of commits.value ?? []) {
-          const auteur =
-            c.author?.email ?? c.author?.name ?? c.committer?.email ?? null;
-          if (!correspondUser(auteur, users)) continue;
           const date = String(c.author?.date ?? c.committer?.date ?? '').slice(
             0,
             10
           );
           bump(date, repoId);
-        }
-      } else {
-        for (const auteur of auteursCommit) {
-          const commits = await adoGet(
-            source.org,
-            source.token,
-            `/${encodeURIComponent(project)}/_apis/git/repositories/${repoId}/commits`,
-            {
-              'searchCriteria.fromDate': from,
-              'searchCriteria.toDate': to,
-              'searchCriteria.author': auteur,
-              $top: '100',
-            }
-          );
-          for (const c of commits.value ?? []) {
-            const date = String(
-              c.author?.date ?? c.committer?.date ?? ''
-            ).slice(0, 10);
-            bump(date, repoId);
-          }
         }
       }
     } catch {
@@ -139,13 +130,7 @@ export async function collecterAzureDevops(source) {
           pr.createdBy?.directoryAlias ??
           pr.createdBy?.displayName ??
           null;
-        // Sans filtre users : on aligne sur le compte du jeton si connu.
-        const filtre = users.length
-          ? users
-          : tokenEmail
-            ? [String(tokenEmail)]
-            : [];
-        if (filtre.length && !correspondUser(createur, filtre)) continue;
+        if (!correspondUser(createur, filtre)) continue;
         const date = String(pr.creationDate ?? '').slice(0, 10);
         bump(date, repoId);
       }

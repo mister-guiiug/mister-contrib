@@ -33,12 +33,14 @@ export function normaliserUsers(source) {
 /**
  * True si la valeur (login, e-mail, display name…) correspond à un filtre.
  * Comparaison insensible à la casse ; pour un e-mail, accepte aussi la partie locale.
+ * Liste vide → refuse (les adapters doivent toujours poser un filtre explicite
+ * ou le titulaire du jeton — ne jamais interpréter « vide » comme « tout le monde »).
  *
  * @param {string|null|undefined} valeur
  * @param {string[]} users
  */
 export function correspondUser(valeur, users) {
-  if (!users.length) return true;
+  if (!users.length) return false;
   if (valeur == null || valeur === '') return false;
   const cibles = users.map(u => u.toLowerCase());
   const v = String(valeur).trim().toLowerCase();

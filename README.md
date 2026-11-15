@@ -60,12 +60,17 @@ le secret `SOURCES_JSON`, interroge chaque source, fusionne par jour, et
 `kind` acceptés : `github`, `gitlab`, `azuredevops`, `bitbucket`. On peut
 répéter un `kind` (plusieurs instances).
 
-**Filtre utilisateurs** (par source) :
+**Qui est compté** (par source / par PAT) :
 
-- `users` : tableau d’identifiants (logins GitHub/GitLab/Bitbucket, e-mails
-  Azure DevOps…) — l’activité de **tous** ces comptes est additionnée ;
-- `user` ou `login` : raccourci pour un seul compte ;
-- omis : compte du jeton (comportement historique).
+| Forge         | Sans `users`                     | Avec `users` / `user` |
+| ------------- | -------------------------------- | --------------------- |
+| `github`      | titulaire du jeton (`viewer`)    | logins listés         |
+| `gitlab`      | événements du jeton              | usernames listés      |
+| `azuredevops` | e-mail / display du jeton        | e-mails / noms listés |
+| `bitbucket`   | titulaire du jeton (`GET /user`) | nicknames listés      |
+
+Un PAT ne remonte **jamais** l’activité de tout un workspace ou d’une org.
+Plusieurs comptes voulus → `users: ["a","b"]` (ou plusieurs sources).
 
 Les logins **ne sortent pas** dans `donnees.json` (anonymat public).
 

@@ -21,8 +21,8 @@ describe('normaliserUsers', () => {
 });
 
 describe('correspondUser', () => {
-  it('laisse tout passer sans filtre', () => {
-    expect(correspondUser('x', [])).toBe(true);
+  it('refuse sans filtre (pas de « tout le monde » silencieux)', () => {
+    expect(correspondUser('x', [])).toBe(false);
   });
 
   it('compare login et e-mail', () => {
