@@ -31,17 +31,20 @@ query Contrib($from: DateTime!, $to: DateTime!) {
  * @param {{ token: string, baseUrl?: string, annee: number }} source
  * @returns {Promise<{ depots: number, jours: { date: string, count: number }[] }>}
  */
+/** Endpoint GraphQL : GitHub.com ou GHE (hostname exact, pas un includes). */
+function graphqlEndpoint(baseUrl) {
+  if (!baseUrl) return 'https://api.github.com/graphql';
+  const u = new URL(baseUrl);
+  if (u.hostname === 'api.github.com' || u.hostname === 'github.com') {
+    return 'https://api.github.com/graphql';
+  }
+  let path = u.pathname.replace(/\/+$/, '');
+  if (path.endsWith('/api/v3')) path = path.slice(0, -'/api/v3'.length);
+  return `${u.origin}${path}/api/graphql`;
+}
+
 export async function collecterGithub(source) {
-  const origin = (source.baseUrl ?? 'https://api.github.com').replace(
-    /\/$/,
-    ''
-  );
-  const graphql =
-    origin.includes('api.github.com') || origin.endsWith('/api/v3')
-      ? origin.includes('api.github.com')
-        ? 'https://api.github.com/graphql'
-        : origin.replace(/\/api\/v3$/, '') + '/api/graphql'
-      : `${origin}/api/graphql`;
+  const graphql = graphqlEndpoint(source.baseUrl);
 
   const from = `${source.annee}-01-01T00:00:00Z`;
   const to = `${source.annee}-12-31T23:59:59Z`;
