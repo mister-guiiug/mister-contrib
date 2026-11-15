@@ -1,7 +1,6 @@
 /**
- * Adapter GitHub.com / GitHub Enterprise : calendrier officiel via GraphQL
- * `contributionsCollection`, plus le nombre de dépôts où le viewer a
- * intervenu pendant l’année (pas le total des dépôts accessibles).
+ * Adapter GitHub.com / GitHub Enterprise : calendrier du titulaire du jeton
+ * (`viewer`) via GraphQL `contributionsCollection`, plus les dépôts touchés.
  */
 
 const QUERY = `
@@ -69,7 +68,6 @@ function idsDepuisByRepo(coll) {
 
 export async function collecterGithub(source) {
   const graphql = graphqlEndpoint(source.baseUrl);
-
   const from = `${source.annee}-01-01T00:00:00Z`;
   const to = `${source.annee}-12-31T23:59:59Z`;
 
@@ -84,10 +82,7 @@ export async function collecterGithub(source) {
     body: JSON.stringify({ query: QUERY, variables: { from, to } }),
   });
 
-  if (!res.ok) {
-    throw new Error(`github HTTP ${res.status}`);
-  }
-
+  if (!res.ok) throw new Error(`github HTTP ${res.status}`);
   const body = await res.json();
   if (body.errors?.length) {
     throw new Error(`github GraphQL: ${body.errors[0].message}`);
@@ -111,8 +106,5 @@ export async function collecterGithub(source) {
     ...idsDepuisByRepo(collection?.repositoryContributions?.nodes),
   ]);
 
-  return {
-    depots: uniques.size,
-    jours,
-  };
+  return { depots: uniques.size, jours };
 }

@@ -14,7 +14,7 @@ sur [`@mister-guiiug/dev-pwa-config`](https://github.com/mister-guiiug/dev-pwa-c
 - le nombre de **contributions** de l’année civile (même familles d’événements
   que les graphes GitHub / GitLab : issues, merge/pull requests, pushes,
   commentaires) ;
-- le nombre de **dépôts** accessibles aux jetons configurés ;
+- le nombre de **dépôts touchés** (où une intervention a été mesurée) ;
 - un **calendrier** (grille 7 × semaines) consolidé.
 
 Elle **ne montre pas** quelles forges sont branchées, ni combien, ni aucune
@@ -43,13 +43,19 @@ le secret `SOURCES_JSON`, interroge chaque source, fusionne par jour, et
 ```
 
 `kind` acceptés : `github`, `gitlab`, `azuredevops`, `bitbucket`. On peut
-répéter un `kind` (plusieurs instances). Localement :
+répéter un `kind` (plusieurs instances / plusieurs PAT).
+
+Chaque PAT ne remonte que l’activité de **son titulaire** (jamais tout un
+workspace ou une org). Plusieurs comptes → plusieurs sources, chacune avec
+son jeton. Aucun login ne sort dans `donnees.json`.
+
+Localement :
 
 ```bash
 SOURCES_JSON='{"sources":[…]}' node scripts/releve.mjs
 ```
 
-Les dépôts sont **additionnés** entre sources (pas de déduplication
+Les dépôts touchés sont **additionnés** entre sources (pas de déduplication
 cross-forge : trop de fuite d’identité).
 
 ## Démarrer

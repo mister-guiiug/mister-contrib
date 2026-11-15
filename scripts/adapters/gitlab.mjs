@@ -1,7 +1,6 @@
 /**
- * Adapter GitLab.com / self-hosted : événements utilisateur (issues, MR,
- * pushes, commentaires) agrégés par jour, plus le nombre de projets où
- * l’utilisateur a réellement intervenu pendant l’année.
+ * Adapter GitLab.com / self-hosted : événements du titulaire du jeton
+ * (issues, MR, pushes, commentaires), plus les projets touchés.
  */
 
 /**
@@ -21,9 +20,8 @@ async function gitlabGet(base, token, path, query = {}) {
     },
   });
   if (!res.ok) throw new Error(`gitlab HTTP ${res.status} ${path}`);
-  const total = res.headers.get('x-total');
   const data = await res.json();
-  return { data, total: total ? Number(total) : null };
+  return { data };
 }
 
 /**
@@ -65,8 +63,5 @@ export async function collecterGitlab(source) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({ date, count }));
 
-  return {
-    depots: projetsTouches.size,
-    jours,
-  };
+  return { depots: projetsTouches.size, jours };
 }

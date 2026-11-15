@@ -1,7 +1,9 @@
 /**
- * Adapter Bitbucket Cloud : commits / PRs de l'année, plus le nombre de
- * dépôts du workspace où l’utilisateur a intervenu.
+ * Adapter Bitbucket Cloud : commits / PRs du titulaire du jeton uniquement
+ * (`GET /user`) — jamais tout le workspace.
  */
+
+import { correspondUser } from '../users.mjs';
 
 /**
  * @param {string} token
@@ -23,10 +25,38 @@ async function bbGet(token, path, query = {}) {
 }
 
 /**
+ * @param {object|null|undefined} user
+ * @param {string[]} filtre
+ */
+function auteurOk(user, filtre) {
+  return (
+    correspondUser(user?.nickname, filtre) ||
+    correspondUser(user?.username, filtre) ||
+    correspondUser(user?.display_name, filtre) ||
+    correspondUser(user?.uuid, filtre) ||
+    correspondUser(user?.account_id, filtre)
+  );
+}
+
+/**
  * @param {{ token: string, workspace: string, annee: number }} source
  */
 export async function collecterBitbucket(source) {
   if (!source.workspace) throw new Error('bitbucket: workspace manquant');
+
+  const me = await bbGet(source.token, '/user');
+  const filtre = [
+    me?.nickname,
+    me?.username,
+    me?.display_name,
+    me?.uuid,
+    me?.account_id,
+  ]
+    .map(v => (v == null ? '' : String(v).trim()))
+    .filter(Boolean);
+  if (filtre.length === 0) {
+    throw new Error('bitbucket: impossible de résoudre le titulaire du jeton');
+  }
 
   /** @type {Map<string, number>} */
   const byDate = new Map();
@@ -89,6 +119,7 @@ export async function collecterBitbucket(source) {
             commitsNext = null;
             break;
           }
+          if (!auteurOk(c.author?.user ?? c.author, filtre)) continue;
           bump(date, full);
         }
         if (!commitsNext) break;
@@ -105,6 +136,7 @@ export async function collecterBitbucket(source) {
         { state: 'OPEN,MERGED,DECLINED,SUPERSEDED', pagelen: '50' }
       );
       for (const pr of prs.values ?? []) {
+        if (!auteurOk(pr.author, filtre)) continue;
         const date = String(pr.created_on ?? '').slice(0, 10);
         bump(date, full);
       }
