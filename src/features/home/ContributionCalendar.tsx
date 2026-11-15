@@ -26,7 +26,12 @@ export function ContributionCalendar({ annee, jours }: Props) {
 
   return (
     <div className="contrib-calendar" data-testid="contrib-calendar">
-      <div className="contrib-calendar__scroll">
+      <div
+        className="contrib-calendar__scroll"
+        tabIndex={0}
+        role="region"
+        aria-label={t('home.calendarAria', { year: annee })}
+      >
         <div
           className="contrib-calendar__mois"
           style={{
@@ -66,8 +71,6 @@ export function ContributionCalendar({ annee, jours }: Props) {
           </div>
 
           <div
-            role="img"
-            aria-label={t('home.calendarAria', { year: annee })}
             style={{
               display: 'grid',
               gridTemplateColumns: `repeat(${semaines.length}, ${cell})`,
