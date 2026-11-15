@@ -3,7 +3,8 @@
  * Relevé multi-forges → `public/donnees.json` anonymisé.
  *
  * Lit `SOURCES_JSON` (secret Actions). Chaque source a un `kind` et un `token` ;
- * les échecs d'une source n'empêchent pas la publication des autres.
+ * optionnellement `users` / `user` / `login` pour borner l’activité à un ou
+ * plusieurs comptes. Les échecs d'une source n'empêchent pas la publication.
  *
  * Usage local :
  *   SOURCES_JSON='{"sources":[…]}' node scripts/releve.mjs

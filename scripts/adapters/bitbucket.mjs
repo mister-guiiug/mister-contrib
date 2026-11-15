@@ -1,7 +1,10 @@
 /**
- * Adapter Bitbucket Cloud : commits / PRs de l'année, plus le nombre de
- * dépôts du workspace où l’utilisateur a intervenu.
+ * Adapter Bitbucket Cloud : commits / PRs de l'année, filtrables par
+ * nickname / uuid / display_name (`users`). Sans filtre : tout auteur
+ * (comportement historique du workspace) — préférer déclarer `users`.
  */
+
+import { correspondUser, normaliserUsers } from '../users.mjs';
 
 /**
  * @param {string} token
@@ -23,10 +26,27 @@ async function bbGet(token, path, query = {}) {
 }
 
 /**
- * @param {{ token: string, workspace: string, annee: number }} source
+ * @param {object|null|undefined} user
+ * @param {string[]} users
+ */
+function auteurOk(user, users) {
+  if (!users.length) return true;
+  return (
+    correspondUser(user?.nickname, users) ||
+    correspondUser(user?.username, users) ||
+    correspondUser(user?.display_name, users) ||
+    correspondUser(user?.uuid, users) ||
+    correspondUser(user?.account_id, users)
+  );
+}
+
+/**
+ * @param {{ token: string, workspace: string, annee: number, users?: string[], user?: string, login?: string }} source
  */
 export async function collecterBitbucket(source) {
   if (!source.workspace) throw new Error('bitbucket: workspace manquant');
+
+  const users = normaliserUsers(source);
 
   /** @type {Map<string, number>} */
   const byDate = new Map();
@@ -89,6 +109,7 @@ export async function collecterBitbucket(source) {
             commitsNext = null;
             break;
           }
+          if (!auteurOk(c.author?.user ?? c.author, users)) continue;
           bump(date, full);
         }
         if (!commitsNext) break;
@@ -105,6 +126,7 @@ export async function collecterBitbucket(source) {
         { state: 'OPEN,MERGED,DECLINED,SUPERSEDED', pagelen: '50' }
       );
       for (const pr of prs.values ?? []) {
+        if (!auteurOk(pr.author, users)) continue;
         const date = String(pr.created_on ?? '').slice(0, 10);
         bump(date, full);
       }

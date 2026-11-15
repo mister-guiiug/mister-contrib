@@ -1,7 +1,10 @@
 /**
- * Adapter Azure DevOps : commits + pull requests de l'année, plus le nombre
- * de dépôts git où l’utilisateur a intervenu. Approximation des indicateurs GH/GL.
+ * Adapter Azure DevOps : commits + pull requests de l'année, filtrables
+ * par un ou plusieurs auteurs (`users` = e-mails ou display names).
+ * Sans filtre : auteur du jeton pour les commits ; PRs du créateur correspondant.
  */
+
+import { correspondUser, normaliserUsers } from '../users.mjs';
 
 /**
  * @param {string} org
@@ -30,7 +33,7 @@ async function adoGet(org, token, path, query = {}) {
 }
 
 /**
- * @param {{ token: string, org: string, annee: number }} source
+ * @param {{ token: string, org: string, annee: number, users?: string[], user?: string, login?: string }} source
  */
 export async function collecterAzureDevops(source) {
   if (!source.org) throw new Error('azuredevops: org manquant');
@@ -43,6 +46,7 @@ export async function collecterAzureDevops(source) {
   const repos = reposBody.value ?? [];
   const from = `${source.annee}-01-01T00:00:00Z`;
   const to = `${source.annee}-12-31T23:59:59Z`;
+  const users = normaliserUsers(source);
 
   /** @type {Map<string, number>} */
   const byDate = new Map();
@@ -57,10 +61,14 @@ export async function collecterAzureDevops(source) {
   const me = await adoGet(source.org, source.token, '/_apis/connectionData', {
     'api-version': '7.1-preview.1',
   }).catch(() => null);
-  const authorEmail =
+  const tokenEmail =
     me?.authenticatedUser?.properties?.Account?.['$value'] ??
     me?.authenticatedUser?.providerDisplayName ??
     null;
+
+  /** Auteurs de commit à interroger côté API (un passage par auteur). */
+  const auteursCommit =
+    users.length > 0 ? users : tokenEmail ? [String(tokenEmail)] : [];
 
   for (const repo of repos) {
     const project = repo.project?.name;
@@ -68,25 +76,47 @@ export async function collecterAzureDevops(source) {
     if (!project || !repoId) continue;
 
     try {
-      const commits = await adoGet(
-        source.org,
-        source.token,
-        `/${encodeURIComponent(project)}/_apis/git/repositories/${repoId}/commits`,
-        {
-          'searchCriteria.fromDate': from,
-          'searchCriteria.toDate': to,
-          ...(authorEmail
-            ? { 'searchCriteria.author': String(authorEmail) }
-            : {}),
-          $top: '100',
-        }
-      );
-      for (const c of commits.value ?? []) {
-        const date = String(c.author?.date ?? c.committer?.date ?? '').slice(
-          0,
-          10
+      if (auteursCommit.length === 0) {
+        const commits = await adoGet(
+          source.org,
+          source.token,
+          `/${encodeURIComponent(project)}/_apis/git/repositories/${repoId}/commits`,
+          {
+            'searchCriteria.fromDate': from,
+            'searchCriteria.toDate': to,
+            $top: '100',
+          }
         );
-        bump(date, repoId);
+        for (const c of commits.value ?? []) {
+          const auteur =
+            c.author?.email ?? c.author?.name ?? c.committer?.email ?? null;
+          if (!correspondUser(auteur, users)) continue;
+          const date = String(c.author?.date ?? c.committer?.date ?? '').slice(
+            0,
+            10
+          );
+          bump(date, repoId);
+        }
+      } else {
+        for (const auteur of auteursCommit) {
+          const commits = await adoGet(
+            source.org,
+            source.token,
+            `/${encodeURIComponent(project)}/_apis/git/repositories/${repoId}/commits`,
+            {
+              'searchCriteria.fromDate': from,
+              'searchCriteria.toDate': to,
+              'searchCriteria.author': auteur,
+              $top: '100',
+            }
+          );
+          for (const c of commits.value ?? []) {
+            const date = String(
+              c.author?.date ?? c.committer?.date ?? ''
+            ).slice(0, 10);
+            bump(date, repoId);
+          }
+        }
       }
     } catch {
       // un dépôt inaccessible ne bloque pas le reste
@@ -104,6 +134,18 @@ export async function collecterAzureDevops(source) {
         }
       );
       for (const pr of prs.value ?? []) {
+        const createur =
+          pr.createdBy?.uniqueName ??
+          pr.createdBy?.directoryAlias ??
+          pr.createdBy?.displayName ??
+          null;
+        // Sans filtre users : on aligne sur le compte du jeton si connu.
+        const filtre = users.length
+          ? users
+          : tokenEmail
+            ? [String(tokenEmail)]
+            : [];
+        if (filtre.length && !correspondUser(createur, filtre)) continue;
         const date = String(pr.creationDate ?? '').slice(0, 10);
         bump(date, repoId);
       }

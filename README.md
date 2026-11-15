@@ -14,7 +14,7 @@ sur [`@mister-guiiug/dev-pwa-config`](https://github.com/mister-guiiug/dev-pwa-c
 - le nombre de **contributions** de l’année civile (même familles d’événements
   que les graphes GitHub / GitLab : issues, merge/pull requests, pushes,
   commentaires) ;
-- le nombre de **dépôts** accessibles aux jetons configurés ;
+- le nombre de **dépôts touchés** (où une intervention a été mesurée) ;
 - un **calendrier** (grille 7 × semaines) consolidé.
 
 Elle **ne montre pas** quelles forges sont branchées, ni combien, ni aucune
@@ -33,23 +33,49 @@ le secret `SOURCES_JSON`, interroge chaque source, fusionne par jour, et
 ```json
 {
   "sources": [
-    { "kind": "github", "token": "ghp_…" },
+    { "kind": "github", "token": "ghp_…", "users": ["alice", "bob"] },
     { "kind": "github", "baseUrl": "https://ghe.exemple", "token": "…" },
-    { "kind": "gitlab", "baseUrl": "https://gitlab.com", "token": "…" },
-    { "kind": "azuredevops", "org": "mon-org", "token": "…" },
-    { "kind": "bitbucket", "workspace": "mon-ws", "token": "…" }
+    {
+      "kind": "gitlab",
+      "baseUrl": "https://gitlab.com",
+      "token": "…",
+      "user": "alice"
+    },
+    {
+      "kind": "azuredevops",
+      "org": "mon-org",
+      "token": "…",
+      "users": ["alice@ex.com"]
+    },
+    {
+      "kind": "bitbucket",
+      "workspace": "mon-ws",
+      "token": "…",
+      "users": ["alice"]
+    }
   ]
 }
 ```
 
 `kind` acceptés : `github`, `gitlab`, `azuredevops`, `bitbucket`. On peut
-répéter un `kind` (plusieurs instances). Localement :
+répéter un `kind` (plusieurs instances).
+
+**Filtre utilisateurs** (par source) :
+
+- `users` : tableau d’identifiants (logins GitHub/GitLab/Bitbucket, e-mails
+  Azure DevOps…) — l’activité de **tous** ces comptes est additionnée ;
+- `user` ou `login` : raccourci pour un seul compte ;
+- omis : compte du jeton (comportement historique).
+
+Les logins **ne sortent pas** dans `donnees.json` (anonymat public).
+
+Localement :
 
 ```bash
 SOURCES_JSON='{"sources":[…]}' node scripts/releve.mjs
 ```
 
-Les dépôts sont **additionnés** entre sources (pas de déduplication
+Les dépôts touchés sont **additionnés** entre sources (pas de déduplication
 cross-forge : trop de fuite d’identité).
 
 ## Démarrer
