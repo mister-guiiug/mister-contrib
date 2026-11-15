@@ -89,68 +89,38 @@ body {
 }
 
 /*
- * Niveaux du calendrier : bleu pétrole (ni vert GitHub, ni orange GitLab).
- * Cellules en rem fixes sur mobile (scroll), fluides à partir de 40rem.
+ * Niveaux du calendrier : accent bleu du thème Butter (ni vert GitHub,
+ * ni orange GitLab). Cellules en rem fixes sur mobile, fluides ≥ 40rem.
  */
 :root {
-  --contrib-0: #ebedf0;
-  --contrib-1: #b3d4e8;
-  --contrib-2: #6ba3c7;
-  --contrib-3: #3d7a9e;
-  --contrib-4: #1a4d6d;
+  --contrib-0: #efe6c8;
+  --contrib-1: #b7d4f0;
+  --contrib-2: #6fa3d9;
+  --contrib-3: #3a7ec0;
+  --contrib-4: #1a5a9a;
   --contrib-cell: 0.7rem;
   --contrib-gap: 0.18rem;
   --contrib-label: 1.35rem;
 }
 
 [data-theme='dark'] {
-  --contrib-0: #2c333d;
-  --contrib-1: #1e4a63;
-  --contrib-2: #2f6f91;
-  --contrib-3: #4a96b8;
-  --contrib-4: #7fb0e0;
+  --contrib-0: #2a2a24;
+  --contrib-1: #1e4a6e;
+  --contrib-2: #2f6f9e;
+  --contrib-3: #5a9ed4;
+  --contrib-4: #9ec9ef;
 }
 
-.contrib-home__tagline,
-.contrib-home__meta {
-  color: var(--dwc-text-soft);
+.contrib-home {
+  width: 100%;
 }
 
 .contrib-home__stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-}
-
-.contrib-home__stat {
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--dwc-border);
-  border-radius: var(--radius-card, 0.875rem);
-  background: var(--dwc-surface);
-}
-
-.contrib-home__stat-value {
-  font-size: clamp(1.6rem, 5vw, 2.15rem);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--dwc-text);
-}
-
-.contrib-home__stat-label {
-  margin-top: 0.3rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--dwc-text-soft);
+  width: 100%;
 }
 
 .contrib-calendar {
-  padding: 0.85rem 0.9rem 0.75rem;
-  border: 1px solid var(--dwc-border);
-  border-radius: var(--radius-card, 0.875rem);
-  background: var(--dwc-surface);
+  width: 100%;
 }
 
 .contrib-calendar[data-vue='recente'] {
@@ -160,32 +130,7 @@ body {
 }
 
 .contrib-calendar__vues {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
   margin-bottom: 0.75rem;
-}
-
-.contrib-calendar__vue {
-  appearance: none;
-  border: 1px solid var(--dwc-border);
-  background: transparent;
-  color: var(--dwc-text);
-  border-radius: 999px;
-  padding: 0.35rem 0.75rem;
-  font: inherit;
-  font-size: 0.75rem;
-  cursor: pointer;
-}
-
-.contrib-calendar__vue[aria-pressed='true'] {
-  background: var(--contrib-3);
-  border-color: var(--contrib-3);
-  color: #fff;
-}
-
-[data-theme='dark'] .contrib-calendar__vue[aria-pressed='true'] {
-  color: #0b1218;
 }
 
 .contrib-calendar__scroll {
@@ -321,16 +266,6 @@ body {
 
 .contrib-calendar__detail {
   margin-top: 0.75rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: 0.55rem;
-  border: 1px solid var(--dwc-border);
-  background: color-mix(in srgb, var(--dwc-surface) 70%, var(--contrib-1) 30%);
-}
-
-.contrib-calendar__detail-value {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--dwc-text);
 }
 
 .contrib-calendar__pied {
@@ -342,48 +277,15 @@ body {
   margin-top: 0.85rem;
 }
 
-.contrib-calendar__hint {
-  font-size: 0.75rem;
-  color: var(--dwc-text-soft);
-  max-width: 28rem;
-}
-
 .contrib-calendar__legende {
   display: flex;
   align-items: center;
   gap: 0.28rem;
-  font-size: 0.7rem;
-  color: var(--dwc-text-soft);
   margin-left: auto;
 }
 
 .contrib-calendar__legende .contrib-calendar__cell {
   cursor: default;
-}
-
-.contrib-home__annexes {
-  display: grid;
-  gap: 0.85rem;
-  margin-top: 1rem;
-}
-
-.contrib-home__annexe {
-  padding: 0.85rem 0.9rem;
-  border: 1px solid var(--dwc-border);
-  border-radius: var(--radius-card, 0.875rem);
-  background: var(--dwc-surface);
-}
-
-.contrib-home__annexe-titre {
-  margin: 0 0 0.75rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--dwc-text);
-}
-
-.contrib-home__annexe-vide {
-  font-size: 0.85rem;
-  color: var(--dwc-text-soft);
 }
 
 .contrib-rythme {
@@ -444,19 +346,6 @@ body {
     --contrib-label: 1.65rem;
   }
 
-  .contrib-home__stats {
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .contrib-home__stat {
-    padding: 1rem 1.15rem;
-  }
-
-  .contrib-calendar {
-    padding: 1rem 1.1rem 0.9rem;
-  }
-
   .contrib-calendar__scroll {
     mask-image: none;
   }
@@ -480,16 +369,6 @@ body {
 
   .contrib-calendar__cell {
     border-radius: 0.2rem;
-  }
-
-  .contrib-home__stats {
-    max-width: 28rem;
-  }
-
-  .contrib-home__annexes {
-    grid-template-columns: 1.2fr 1fr;
-    gap: 1rem;
-    margin-top: 1.25rem;
   }
 }
 

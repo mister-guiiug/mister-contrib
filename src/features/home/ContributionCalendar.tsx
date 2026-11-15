@@ -1,4 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Card } from '@astryxdesign/core/Card';
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+} from '@astryxdesign/core/SegmentedControl';
+import { Stack } from '@astryxdesign/core/Stack';
+import { Text } from '@astryxdesign/core/Text';
 import { useI18n } from '../../i18n/index.ts';
 import {
   dernierJourActif,
@@ -82,131 +89,136 @@ export function ContributionCalendar({ annee, jours, partiel }: Props) {
     : t('home.dayDetailEmpty');
 
   return (
-    <div
+    <Card
+      padding={3}
+      elevation="low"
+      width="100%"
       className="contrib-calendar"
       data-testid="contrib-calendar"
       data-vue={vueEffective}
     >
-      {mobile ? (
-        <div
-          className="contrib-calendar__vues"
-          role="group"
-          aria-label={t('home.viewGroup')}
-        >
-          <button
-            type="button"
-            className="contrib-calendar__vue"
-            aria-pressed={vue === 'recente'}
-            onClick={() => setVue('recente')}
-          >
-            {t('home.viewRecent')}
-          </button>
-          <button
-            type="button"
-            className="contrib-calendar__vue"
-            aria-pressed={vue === 'annee'}
-            onClick={() => setVue('annee')}
-          >
-            {t('home.viewYear')}
-          </button>
-        </div>
-      ) : null}
-
-      <div
-        ref={scrollRef}
-        className="contrib-calendar__scroll"
-        tabIndex={0}
-        role="region"
-        aria-label={t('home.calendarAria', { year: annee })}
-      >
-        <div
-          className="contrib-calendar__inner"
-          style={{ ['--contrib-weeks' as string]: String(semaines.length) }}
-        >
-          <div className="contrib-calendar__mois">
-            <span className="contrib-calendar__coin" aria-hidden="true" />
-            {semaines.map((_, col) => {
-              const m = mois.find(x => x.col === col);
-              return (
-                <span
-                  key={`m-${col}`}
-                  className="contrib-calendar__mois-label"
-                  data-first={m ? 'true' : undefined}
-                >
-                  {m?.label ?? ''}
-                </span>
-              );
-            })}
+      <Stack gap={3} width="100%">
+        {mobile ? (
+          <div className="contrib-calendar__vues">
+            <SegmentedControl
+              value={vue}
+              onChange={v => setVue(v as Vue)}
+              label={t('home.viewGroup')}
+              size="sm"
+            >
+              <SegmentedControlItem
+                value="recente"
+                label={t('home.viewRecent')}
+              />
+              <SegmentedControlItem value="annee" label={t('home.viewYear')} />
+            </SegmentedControl>
           </div>
+        ) : null}
 
-          <div className="contrib-calendar__corps">
-            <div className="contrib-calendar__jours" aria-hidden="true">
-              {JOURS_LIBELLES.map((libelle, i) => (
-                <span key={i} className="contrib-calendar__jour-label">
-                  {libelle}
-                </span>
-              ))}
+        <div
+          ref={scrollRef}
+          className="contrib-calendar__scroll"
+          tabIndex={0}
+          role="region"
+          aria-label={t('home.calendarAria', { year: annee })}
+        >
+          <div
+            className="contrib-calendar__inner"
+            style={{ ['--contrib-weeks' as string]: String(semaines.length) }}
+          >
+            <div className="contrib-calendar__mois">
+              <span className="contrib-calendar__coin" aria-hidden="true" />
+              {semaines.map((_, col) => {
+                const m = mois.find(x => x.col === col);
+                return (
+                  <span
+                    key={`m-${col}`}
+                    className="contrib-calendar__mois-label"
+                    data-first={m ? 'true' : undefined}
+                  >
+                    {m?.label ?? ''}
+                  </span>
+                );
+              })}
             </div>
 
-            <div className="contrib-calendar__semaines">
-              {semaines.map((semaine, col) => (
-                <div key={`w-${col}`} className="contrib-calendar__semaine">
-                  {semaine.map((cellule, row) => {
-                    if (!cellule) {
+            <div className="contrib-calendar__corps">
+              <div className="contrib-calendar__jours" aria-hidden="true">
+                {JOURS_LIBELLES.map((libelle, i) => (
+                  <span key={i} className="contrib-calendar__jour-label">
+                    {libelle}
+                  </span>
+                ))}
+              </div>
+
+              <div className="contrib-calendar__semaines">
+                {semaines.map((semaine, col) => (
+                  <div key={`w-${col}`} className="contrib-calendar__semaine">
+                    {semaine.map((cellule, row) => {
+                      if (!cellule) {
+                        return (
+                          <span
+                            key={`e-${col}-${row}`}
+                            className="contrib-calendar__cell contrib-calendar__cell--empty"
+                          />
+                        );
+                      }
+                      const apresCoupure =
+                        coupure !== null && cellule.date > coupure;
+                      const titre = t('home.dayTitle', {
+                        count: cellule.count,
+                        date: cellule.date,
+                      });
+                      const selected = selection?.date === cellule.date;
                       return (
-                        <span
-                          key={`e-${col}-${row}`}
-                          className="contrib-calendar__cell contrib-calendar__cell--empty"
+                        <button
+                          type="button"
+                          key={cellule.date}
+                          className="contrib-calendar__cell"
+                          data-level={apresCoupure ? 0 : cellule.niveau}
+                          data-partial={apresCoupure ? 'true' : undefined}
+                          data-selected={selected ? 'true' : undefined}
+                          aria-label={titre}
+                          aria-pressed={selected}
+                          onClick={() => setSelection(cellule)}
                         />
                       );
-                    }
-                    const apresCoupure =
-                      coupure !== null && cellule.date > coupure;
-                    const titre = t('home.dayTitle', {
-                      count: cellule.count,
-                      date: cellule.date,
-                    });
-                    const selected = selection?.date === cellule.date;
-                    return (
-                      <button
-                        type="button"
-                        key={cellule.date}
-                        className="contrib-calendar__cell"
-                        data-level={apresCoupure ? 0 : cellule.niveau}
-                        data-partial={apresCoupure ? 'true' : undefined}
-                        data-selected={selected ? 'true' : undefined}
-                        aria-label={titre}
-                        aria-pressed={selected}
-                        onClick={() => setSelection(cellule)}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
+                    })}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div
-        className="contrib-calendar__detail"
-        role="status"
-        aria-live="polite"
-        data-testid="contrib-day-detail"
-      >
-        <p className="contrib-calendar__detail-value m-0">{detail}</p>
-      </div>
-
-      <div className="contrib-calendar__pied">
-        <p className="contrib-calendar__hint m-0">{t('home.countsAs')}</p>
-        <div className="contrib-calendar__legende" aria-hidden="true">
-          <span>{t('home.less')}</span>
-          {[0, 1, 2, 3, 4].map(n => (
-            <span key={n} className="contrib-calendar__cell" data-level={n} />
-          ))}
-          <span>{t('home.more')}</span>
+        <div
+          className="contrib-calendar__detail"
+          role="status"
+          aria-live="polite"
+          data-testid="contrib-day-detail"
+        >
+          <Text weight="semibold" display="block">
+            {detail}
+          </Text>
         </div>
-      </div>
-    </div>
+
+        <div className="contrib-calendar__pied">
+          <Text type="supporting" size="sm" display="block">
+            {t('home.countsAs')}
+          </Text>
+          <div className="contrib-calendar__legende" aria-hidden="true">
+            <Text type="supporting" size="2xs">
+              {t('home.less')}
+            </Text>
+            {[0, 1, 2, 3, 4].map(n => (
+              <span key={n} className="contrib-calendar__cell" data-level={n} />
+            ))}
+            <Text type="supporting" size="2xs">
+              {t('home.more')}
+            </Text>
+          </div>
+        </div>
+      </Stack>
+    </Card>
   );
 }

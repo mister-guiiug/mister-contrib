@@ -28,11 +28,11 @@
     "screenshots": "pwa-screenshots --wide-path reglages"
   },
   "bundleBudget": {
-    "_pourquoi": "REPOSÉ À LA MARGE QUE LA RÈGLE DEMANDE, le 20/09/2026. Les trois bornes étaient à 0,2 à 0,6 % du poids mesuré — 479 kB sous 480, 261,0 sous 262, 159,0 sous 160 — alors que le bin qui les vérifie dit « un budget se pose à poids courant + marge », marge 10 % par défaut, et que `pwa-doctor` répète « poser le budget à +10 % ». Une marge d'un kilo-octet ne mesure plus rien : elle fait rougir LA CI DU SOCLE, qui construit ce squelette sur le paquet candidat à chaque PR, dès qu'un composant partagé gagne une ligne. Arrivé le 20/09 avec `BottomNav navigate` et `items[].load` (dev-pwa-config#326) : +1 kB brut sur le morceau principal, +0,4 kB gzip au total, et une borne rouge pour la fonctionnalité que ce squelette est justement là pour montrer. Les valeurs ci-dessous sont le relevé EN CI de `main` (run 35510079498 : 261,0 / 159,0 / 479) porté à +10 % et arrondi au kilo-octet supérieur — la formule de `pwa-bundle-budget` elle-même. MESURER EN CI, PAS EN LOCAL : gh run view <id> -R mister-guiiug/mister-contrib --log | grep 'TOTAL gzip'. LE COÛT DE POSTHOG RESTE DIT, et c'est pour ça que la troisième borne existe : `totalGzipKb` additionne TOUT le JS émis, morceaux différés compris, et `posthog-js` (48,9 kB gzip — l'entrée `module.slim.js` et non l'entrée par défaut, 48,7 kB économisés) est chargé par le `loader` d'`App.tsx` APRÈS l'accord : un visiteur qui refuse ne le télécharge jamais. `preloadGzipKb` mesure ce que `dist/index.html` référence vraiment, et lui ne bouge pas avec PostHog.",
-    "totalGzipKb": 461,
-    "preloadGzipKb": 187,
-    "mainChunkKb": 547,
-    "_releve": "REPOSÉ LE 06/11/2026, QUAND SENTRY A ÉTÉ BRANCHÉ POUR DE VRAI. Jusque-là `initSentry` était appelé sans `loader` ni `@sentry/react` : rien ne partait, et le total ne comptait pas le SDK. Il le compte désormais : 146,8 kB gzip dans `sentry.js`, morceau chargé seulement quand un DSN est posé, hors du précache et hors des préchargements. D'où un total de 418,9 kB pour un chemin critique presque inchangé. React passe dans son propre morceau (`sentryChunkGroups`), préchargé avec le runtime de Rolldown : 169,1 kB préchargés contre 168,2. Les trois bornes sont le relevé (418,9 / 169,1 / 497, le même octet en local et en CI, le squelette n'ayant pas de backend) porté à +10 % et arrondi au kilo-octet supérieur. Avant ce relevé, la marge préchargée n'était plus que de 3,8 % au déploiement (168,6 / 175) : une application neuve naissait avec 6,4 kB de jeu."
+    "_pourquoi": "REPOSÉ À LA MARGE QUE LA RÈGLE DEMANDE. Un budget se pose à poids courant + 10 %, arrondi au kilo-octet supérieur — la formule de `pwa-bundle-budget`. MESURER EN CI quand un backend ou des bindings natifs faussent le local ; ici le squelette n'a pas de backend, local = CI. LE COÛT DE POSTHOG RESTE DIT : `totalGzipKb` additionne TOUT le JS émis, morceaux différés compris, et `posthog-js` (module.slim) n'est chargé qu'après l'accord. `preloadGzipKb` mesure ce que `dist/index.html` référence vraiment.",
+    "totalGzipKb": 615,
+    "preloadGzipKb": 188,
+    "mainChunkKb": 549,
+    "_releve": "REPOSÉ LE 15/11/2026 AVEC ASTRYX SUR L'ACCUEIL (ADR 0014). L'accueil est un `lazy()` : Astryx + Butter (~138 kB gzip JS + ~48 kB CSS) ne sont pas dans le chemin critique. Relevé local : total gzip 558,5 / préchargé gzip 170,3 / principal brut 499 — porté à +10 %."
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
@@ -64,7 +64,10 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
+    "@astryxdesign/core": "^0.7.16",
+    "@astryxdesign/theme-butter": "^0.7.16",
     "@sentry/react": "^11.10.0",
+    "@stylexjs/stylex": "^0.19.2",
     "@supabase/supabase-js": "^2.118.0",
     "lucide-react": "^1.68.0",
     "posthog-js": "^1.445.3",
@@ -96,5 +99,8 @@
     "refus": {
       "seo-content-pages": "née du générateur sans page de contenu : celles du squelette ne parlaient que de lui. Écrire la première dans content/pages/, puis retirer cette ligne."
     }
+  },
+  "allowScripts": {
+    "@astryxdesign/core@0.7.16": true
   }
 }
