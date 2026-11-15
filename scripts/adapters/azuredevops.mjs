@@ -35,7 +35,11 @@ async function adoGet(org, token, path, query = {}) {
 export async function collecterAzureDevops(source) {
   if (!source.org) throw new Error('azuredevops: org manquant');
 
-  const reposBody = await adoGet(source.org, source.token, '/_apis/git/repositories');
+  const reposBody = await adoGet(
+    source.org,
+    source.token,
+    '/_apis/git/repositories'
+  );
   const repos = reposBody.value ?? [];
   const from = `${source.annee}-01-01T00:00:00Z`;
   const to = `${source.annee}-12-31T23:59:59Z`;
@@ -71,7 +75,7 @@ export async function collecterAzureDevops(source) {
           ...(authorEmail
             ? { 'searchCriteria.author': String(authorEmail) }
             : {}),
-          '$top': '100',
+          $top: '100',
         }
       );
       for (const c of commits.value ?? []) {
@@ -93,7 +97,7 @@ export async function collecterAzureDevops(source) {
         {
           'searchCriteria.status': 'all',
           'searchCriteria.minTime': from,
-          '$top': '100',
+          $top: '100',
         }
       );
       for (const pr of prs.value ?? []) {

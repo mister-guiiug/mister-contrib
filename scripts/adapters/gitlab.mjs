@@ -67,7 +67,8 @@ export async function collecterGitlab(source) {
     .map(([date, count]) => ({ date, count }));
 
   return {
-    depots: projets.total ?? (Array.isArray(projets.data) ? projets.data.length : 0),
+    depots:
+      projets.total ?? (Array.isArray(projets.data) ? projets.data.length : 0),
     jours,
   };
 }

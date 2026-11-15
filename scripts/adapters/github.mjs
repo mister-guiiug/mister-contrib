@@ -32,7 +32,10 @@ query Contrib($from: DateTime!, $to: DateTime!) {
  * @returns {Promise<{ depots: number, jours: { date: string, count: number }[] }>}
  */
 export async function collecterGithub(source) {
-  const origin = (source.baseUrl ?? 'https://api.github.com').replace(/\/$/, '');
+  const origin = (source.baseUrl ?? 'https://api.github.com').replace(
+    /\/$/,
+    ''
+  );
   const graphql =
     origin.includes('api.github.com') || origin.endsWith('/api/v3')
       ? origin.includes('api.github.com')
@@ -64,7 +67,8 @@ export async function collecterGithub(source) {
   }
 
   const viewer = body.data?.viewer;
-  const weeks = viewer?.contributionsCollection?.contributionCalendar?.weeks ?? [];
+  const weeks =
+    viewer?.contributionsCollection?.contributionCalendar?.weeks ?? [];
   const jours = [];
   for (const week of weeks) {
     for (const day of week.contributionDays ?? []) {

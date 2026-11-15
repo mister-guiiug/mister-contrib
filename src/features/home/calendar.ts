@@ -9,13 +9,17 @@ export type Cellule = {
 
 /** Seuils type contribution graph : quartiles sur les jours actifs. */
 export function niveauxPour(jours: Jour[]): Map<string, number> {
-  const actifs = jours.map(j => j.count).filter(c => c > 0).sort((a, b) => a - b);
+  const actifs = jours
+    .map(j => j.count)
+    .filter(c => c > 0)
+    .sort((a, b) => a - b);
   const map = new Map<string, number>();
   if (actifs.length === 0) {
     for (const j of jours) map.set(j.date, 0);
     return map;
   }
-  const q = (p: number) => actifs[Math.min(actifs.length - 1, Math.floor(actifs.length * p))]!;
+  const q = (p: number) =>
+    actifs[Math.min(actifs.length - 1, Math.floor(actifs.length * p))]!;
   const t1 = q(0.25);
   const t2 = q(0.5);
   const t3 = q(0.75);
@@ -104,7 +108,10 @@ export function grilleAnnee(
 }
 
 /** Relatif « Vérifié il y a … » à partir d'un ISO. */
-export function ageRelatif(genere: string | null, maintenant = Date.now()): string | null {
+export function ageRelatif(
+  genere: string | null,
+  maintenant = Date.now()
+): string | null {
   if (!genere) return null;
   const t = Date.parse(genere);
   if (Number.isNaN(t)) return null;
