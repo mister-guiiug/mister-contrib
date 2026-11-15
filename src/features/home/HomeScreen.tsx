@@ -48,22 +48,19 @@ export function HomeScreen() {
   const age = ageRelatif(donnees?.genere ?? null);
 
   return (
-    <>
-      <p className="mt-0 mb-2" style={{ color: 'var(--dwc-text-soft)' }}>
-        {t('app.tagline')}
-      </p>
+    <div className="contrib-home">
+      <p className="contrib-home__tagline mt-0 mb-2">{t('app.tagline')}</p>
 
       {age ? (
         <p
-          className="mt-0 mb-6 text-sm"
-          style={{ color: 'var(--dwc-text-soft)' }}
+          className="contrib-home__meta mt-0 mb-5 text-sm"
           data-testid="releve-frais"
         >
           {t('home.verified', { when: age })}
           {donnees?.partiel ? ` · ${t('home.partial')}` : null}
         </p>
       ) : (
-        <div className="mb-6" />
+        <div className="mb-5" />
       )}
 
       {erreur ? <ErrorBanner message={erreur} className="mb-4" /> : null}
@@ -74,25 +71,33 @@ export function HomeScreen() {
 
       {donnees ? (
         <>
-          <h2 className="mt-0 mb-1 text-lg font-semibold">
-            {t('home.contributionsInYear', {
-              count: fmt.number(donnees.contributions),
-              year: donnees.annee,
-            })}
-          </h2>
-          <p
-            className="mt-0 mb-4 text-sm"
-            style={{ color: 'var(--dwc-text-soft)' }}
-            data-testid="depots-total"
-          >
-            {t('home.repos', { count: fmt.number(donnees.depots) })}
-          </p>
+          <div className="contrib-home__stats" aria-label={t('home.title')}>
+            <div className="contrib-home__stat">
+              <p className="contrib-home__stat-value m-0">
+                {fmt.number(donnees.contributions)}
+              </p>
+              <h2 className="contrib-home__stat-label m-0">
+                {t('home.contributionsLabel', { year: donnees.annee })}
+              </h2>
+            </div>
+            <div className="contrib-home__stat">
+              <p
+                className="contrib-home__stat-value m-0"
+                data-testid="depots-total"
+              >
+                {fmt.number(donnees.depots)}
+              </p>
+              <p className="contrib-home__stat-label m-0">
+                {t('home.reposLabel')}
+              </p>
+            </div>
+          </div>
 
           <ContributionCalendar annee={donnees.annee} jours={donnees.jours} />
         </>
       ) : null}
 
       <AppFooter repoUrl={REPO_URL} issues className="mt-8" />
-    </>
+    </div>
   );
 }
