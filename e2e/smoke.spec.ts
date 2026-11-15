@@ -21,6 +21,7 @@ test.describe('@critical le cadre', () => {
       'contributions'
     );
     await expect(page.getByTestId('depots-total')).toBeVisible();
+    await expect(page.locator('.contrib-home__stats')).toBeVisible();
   });
 
   test('le calendrier ne nomme aucune forge', async ({ page }) => {
