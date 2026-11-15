@@ -13,122 +13,21 @@ import { expect, test } from '@playwright/test';
 test.describe('@critical le cadre', () => {
   test("l'accueil s'ouvre et porte le nom de l'app", async ({ page }) => {
     await page.goto('/');
-    // Le nom de l'app, pas celui de l'écran : c'est le seul `h1` que lit un
-    // moteur. L'écran d'exemple garde son titre, un cran plus bas.
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'Mister Contrib'
     );
-    await expect(page.getByRole('heading', { level: 2 })).toHaveText('Notes');
+    await expect(page.getByTestId('contrib-calendar')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2 })).toContainText(
+      'contributions'
+    );
+    await expect(page.getByTestId('depots-total')).toBeVisible();
   });
 
-  test('une note ajoutée survit au rechargement', async ({ page }) => {
+  test('le calendrier ne nomme aucune forge', async ({ page }) => {
     await page.goto('/');
-
-    const texte = `note de test ${Date.now()}`;
-    await page.getByLabel('Nouvelle note').fill(texte);
-    await page.getByRole('button', { name: 'Ajouter' }).click();
-    await expect(page.getByText(texte)).toBeVisible();
-
-    // Le vrai contrat de la persistance : ce qui est écrit se relit après un
-    // démarrage à froid, pas seulement dans l'état vivant du magasin.
-    await page.reload();
-    await expect(page.getByText(texte)).toBeVisible();
-  });
-
-  test('supprimée par erreur, une note s’annule et revient à sa place', async ({
-    page,
-  }) => {
-    // ANNULER REMPLACE CONFIRMER. Le dialogue demandait de se décider AVANT,
-    // sur un résultat qu'on ne voyait pas encore ; le sursis laisse voir le
-    // résultat, puis se dédire. Aucune application du parc n'offrait
-    // d'annulation après suppression d'un enregistrement.
-    await page.goto('/');
-    await page.getByLabel('Nouvelle note').fill('à garder');
-    await page.getByRole('button', { name: 'Ajouter' }).click();
-    await page.getByLabel('Nouvelle note').fill('supprimée par erreur');
-    await page.getByRole('button', { name: 'Ajouter' }).click();
-    await expect(page.getByText('supprimée par erreur')).toBeVisible();
-
-    // Deux notes, donc deux boutons « Supprimer » : la ligne désigne le sien.
-    await page
-      .getByRole('listitem')
-      .filter({ hasText: 'supprimée par erreur' })
-      .getByRole('button', { name: 'Supprimer' })
-      .click();
-    // Aucun dialogue : la note part tout de suite.
-    await expect(page.getByText('supprimée par erreur')).toHaveCount(0);
-
-    await page.getByRole('button', { name: 'Annuler' }).click();
-    await expect(page.getByText('supprimée par erreur')).toBeVisible();
-    await expect(page.getByText('à garder')).toBeVisible();
-
-    // Rien n'avait été écrit : le rechargement le prouve, et c'est la seule
-    // preuve qui compte — l'état vivant du magasin, lui, ne survit pas.
-    await page.reload();
-    await expect(page.getByText('supprimée par erreur')).toBeVisible();
-  });
-
-  test('laissé filer, le sursis écrit la suppression pour de bon', async ({
-    page,
-  }) => {
-    await page.goto('/');
-    await page.getByLabel('Nouvelle note').fill('vraiment supprimée');
-    await page.getByRole('button', { name: 'Ajouter' }).click();
-    await expect(page.getByText('vraiment supprimée')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Supprimer' }).click();
-
-    // Le bouton d'annulation disparaît À L'INSTANT où il cesse d'être vrai :
-    // c'est le magasin qui tient la minuterie, et la notification n'est que
-    // son affichage. Un bouton qui reste affiché sans effet est pire que pas
-    // de bouton du tout.
-    await expect(page.getByRole('button', { name: 'Annuler' })).toHaveCount(0, {
-      timeout: 15_000,
-    });
-
-    await page.reload();
-    await expect(page.getByText('vraiment supprimée')).toHaveCount(0);
-    await expect(page.getByText('Aucune note pour le moment.')).toBeVisible();
-  });
-
-  test('hors ligne, une note ajoutée n’est pas perdue au retour du réseau', async ({
-    page,
-    context,
-  }) => {
-    // CE QUE CE TEST PROUVE, ET CE QU'IL NE PROUVE PAS.
-    //
-    // Il prouve la promesse VISIBLE : réseau coupé, l'application répond
-    // encore (service worker), le geste aboutit, il le DIT, et la note est
-    // toujours là au retour — y compris après un démarrage à froid.
-    //
-    // Il ne prouve PAS le rejeu de la file d'écritures (ADR 0010) : le
-    // squelette démarre sans configuration, ses e2e tournent donc en mode
-    // local, où il n'y a pas de réseau entre l'application et son stockage —
-    // et donc pas de file. Cette moitié-là est prouvée dans
-    // `src/backend/queued-notes.test.ts`, contre le contrat du port. C'est
-    // écrit ici pour que personne ne prenne ce test pour ce qu'il n'est pas.
-    await page.goto('/');
-    // En local il n'y a rien à attendre : l'indicateur n'est PAS rendu. Un
-    // badge qui dirait « à jour » sans jamais rien attendre serait du décor.
-    await expect(page.locator('[data-dwc="sync-status"]')).toHaveCount(0);
-
-    await context.setOffline(true);
-
-    const texte = `écrite hors ligne ${Date.now()}`;
-    await page.getByLabel('Nouvelle note').fill(texte);
-    await page.getByRole('button', { name: 'Ajouter' }).click();
-    await expect(page.getByText(texte)).toBeVisible();
-
-    // Et la coupure est ANNONCÉE : le bandeau du socle apparaît après une
-    // seconde et demie hors ligne continu — les micro-coupures ne clignotent
-    // pas. Sans lui, une écriture qui attend ressemble à une écriture faite.
-    await expect(page.locator('[data-dwc="connection-banner"]')).toBeVisible({
-      timeout: 10_000,
-    });
-
-    await context.setOffline(false);
-    await page.reload();
-    await expect(page.getByText(texte)).toBeVisible();
+    await expect(page.getByTestId('contrib-calendar')).toBeVisible();
+    const corps = await page.locator('main').innerText();
+    expect(corps).not.toMatch(/GitHub|GitLab|Azure|Bitbucket/i);
   });
 
   test('la navigation atteint les quatre destinations', async ({ page }) => {
@@ -179,49 +78,6 @@ test.describe('@critical le cadre', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'Réglages'
     );
-  });
-
-  test('un fichier exporté s’importe, remplace tout, et survit au rechargement', async ({
-    page,
-  }) => {
-    // Le seul moyen de changer d'appareil sans compte. Quinze apps du parc
-    // savent exporter ; presque aucune ne relit son propre fichier.
-    await page.goto('/');
-    await page.getByLabel('Nouvelle note').fill('avant import');
-    await page.getByRole('button', { name: 'Ajouter' }).click();
-    await expect(page.getByText('avant import')).toBeVisible();
-
-    await page.goto('/reglages');
-    await page.getByLabel('Importer mes notes').setInputFiles({
-      name: 'notes.json',
-      mimeType: 'application/json',
-      // Le format d'un export : l'enveloppe versionnée du magasin du socle.
-      buffer: Buffer.from(
-        JSON.stringify({
-          v: 1,
-          data: {
-            notes: [
-              {
-                id: 'note_e2e',
-                text: 'venue du fichier',
-                createdAt: '2026-09-06T08:00:00.000Z',
-              },
-            ],
-          },
-        })
-      ),
-    });
-    // Des notes existent : l'import REMPLACE, donc il demande d'abord.
-    await page.getByRole('button', { name: 'Confirmer' }).click();
-    // Pas `getByRole('status')` : la page en porte déjà une (la bannière de
-    // connexion du socle), et le mode strict refuserait l'ambiguïté.
-    await expect(page.getByText('1 note importée.')).toBeVisible();
-
-    await page.goto('/');
-    await expect(page.getByText('venue du fichier')).toBeVisible();
-    await expect(page.getByText('avant import')).toHaveCount(0);
-    await page.reload();
-    await expect(page.getByText('venue du fichier')).toBeVisible();
   });
 
   test('la fiche d’installation se propose quand le navigateur le permet', async ({

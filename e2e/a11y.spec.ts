@@ -25,6 +25,7 @@ const ECRANS: {
     nom: 'accueil',
     pret: async page => {
       await expect(page.locator('main#contenu')).toBeVisible();
+      await expect(page.getByTestId('contrib-calendar')).toBeVisible();
     },
   },
   {

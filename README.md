@@ -1,67 +1,73 @@
 # mister-contrib
 
-Consolide contributions et dépôts depuis plusieurs forges en un calendrier public anonymisé, sans révéler les plateformes utilisées.
+Consolide contributions et dépôts depuis plusieurs forges en un calendrier
+public anonymisé, sans révéler les plateformes utilisées.
+
+**→ https://mister-guiiug.github.io/mister-contrib/**
 
 Application PWA de la famille `miss-*` / `mister-*`, née du squelette
 [`pwa-starter-kit`](https://github.com/mister-guiiug/pwa-starter-kit) et bâtie
 sur [`@mister-guiiug/dev-pwa-config`](https://github.com/mister-guiiug/dev-pwa-config).
 
+## Ce que la page montre
+
+- le nombre de **contributions** de l’année civile (même familles d’événements
+  que les graphes GitHub / GitLab : issues, merge/pull requests, pushes,
+  commentaires) ;
+- le nombre de **dépôts** accessibles aux jetons configurés ;
+- un **calendrier** (grille 7 × semaines) consolidé.
+
+Elle **ne montre pas** quelles forges sont branchées, ni combien, ni aucune
+URL de plateforme.
+
+## Relevé
+
+Le workflow [`.github/workflows/releve.yml`](.github/workflows/releve.yml) lit
+le secret `SOURCES_JSON`, interroge chaque source, fusionne par jour, et
+écrit `public/donnees.json` (anonymisé). Un commit sur `main` republie Pages.
+
+### Secret `SOURCES_JSON`
+
+À poser sur le dépôt (Settings → Secrets), jamais dans le code :
+
+```json
+{
+  "sources": [
+    { "kind": "github", "token": "ghp_…" },
+    { "kind": "github", "baseUrl": "https://ghe.exemple", "token": "…" },
+    { "kind": "gitlab", "baseUrl": "https://gitlab.com", "token": "…" },
+    { "kind": "azuredevops", "org": "mon-org", "token": "…" },
+    { "kind": "bitbucket", "workspace": "mon-ws", "token": "…" }
+  ]
+}
+```
+
+`kind` acceptés : `github`, `gitlab`, `azuredevops`, `bitbucket`. On peut
+répéter un `kind` (plusieurs instances). Localement :
+
+```bash
+SOURCES_JSON='{"sources":[…]}' node scripts/releve.mjs
+```
+
+Les dépôts sont **additionnés** entre sources (pas de déduplication
+cross-forge : trop de fuite d’identité).
+
 ## Démarrer
 
 ```bash
 npm install
-```
-
-```bash
 npm run dev
 ```
 
 L'installation lit le socle sur GitHub Packages : exporter `NODE_AUTH_TOKEN`
 (un jeton avec `read:packages`) avant `npm install`.
 
-**L'application démarre sans configuration**, sur son stockage local. C'est une
-propriété à conserver : elle rend possibles le hors-ligne, les tests sans
-secrets, et la page publique qu'on ouvre sans compte.
-
 ## Vérifier
 
 ```bash
+npm test
 npm run build
 ```
-
-Le build enchaîne `tsc -b`, Vite, le budget de poids et `pwa-doctor --strict` :
-il échoue à la moindre dette de conformité au parc.
-
-## Ce qui reste à faire
-
-1. remplacer `public/favicon.svg`, puis `npm run icons` ;
-2. régénérer les captures du manifeste : `npm run screenshots` ;
-3. écrire le métier dans `src/features/`, et **remplacer l'exemple de
-   `src/features/home/`** — il est là pour ça. L'accueil, lui, garde :
-   - sa première ligne, l'accroche `app.tagline` : la seule phrase que les
-     moteurs associent à la page ;
-   - sa dernière, le pied de page de la famille, que la règle veut sur
-     l'accueil et que `pwa-doctor --strict` contrôle ;
-4. ajuster la palette dans `src/index.css` et les couleurs de `vite.config.ts` ;
-5. si l'application a un backend : poser `VITE_SUPABASE_URL` et
-   `VITE_SUPABASE_ANON_KEY` en **variables** du dépôt, et appliquer
-   `supabase/` — sinon supprimer ce dossier et les deux workflows Supabase ;
-6. relire le titre de la page (`<title>` et `og:title` d'`index.html`, que
-   le socle sert en h1 aux robots) et la description — la meta
-   d'`index.html`, `app.tagline` et `about.what` de `src/i18n/messages.ts` —
-   et traduire l'anglais, marqué `TODO traduire` ;
-7. écrire ce que le socle sert aux robots : le texte d'accueil
-   (`content/accueil.md`) et une première page qui répond à une vraie
-   recherche (`content/pages/<slug>.md`). Ceux du squelette ne parlaient que
-   de lui, et le générateur ne les a pas recopiés (`content/accueil.md`, `content/pages/`, `src/squelette.test.ts`).
-   En attendant, `pwaDoctor.refus` de `package.json` porte `seo-content-pages` :
-   `pwa-doctor` le signale de lui-même quand il n'excuse plus rien, et la
-   ligne se retire alors.
-
-## Les décisions
-
-Héritées du squelette et valables ici : [`docs/adr/`](./docs/adr/README.md).
-Une application qui s'en écarte le fait, et l'écrit.
 
 ## Licence
 
