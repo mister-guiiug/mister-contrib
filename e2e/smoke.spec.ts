@@ -17,9 +17,9 @@ test.describe('@critical le cadre', () => {
       'Mister Contrib'
     );
     await expect(page.getByTestId('contrib-calendar')).toBeVisible();
-    await expect(page.getByRole('heading', { level: 2 })).toContainText(
-      'contributions'
-    );
+    await expect(
+      page.getByRole('heading', { level: 2, name: /contributions/ })
+    ).toBeVisible();
     await expect(page.getByTestId('depots-total')).toBeVisible();
     await expect(page.locator('.contrib-home__stats')).toBeVisible();
     await expect(page.getByTestId('contrib-day-detail')).toBeVisible();
