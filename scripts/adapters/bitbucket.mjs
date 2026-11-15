@@ -1,10 +1,9 @@
 /**
- * Adapter Bitbucket Cloud : commits / PRs de l'année du (des) compte(s)
- * ciblé(s). Sans `users` : uniquement le titulaire du jeton (`GET /user`),
- * jamais tout le workspace.
+ * Adapter Bitbucket Cloud : commits / PRs du titulaire du jeton uniquement
+ * (`GET /user`) — jamais tout le workspace.
  */
 
-import { correspondUser, normaliserUsers } from '../users.mjs';
+import { correspondUser } from '../users.mjs';
 
 /**
  * @param {string} token
@@ -27,7 +26,7 @@ async function bbGet(token, path, query = {}) {
 
 /**
  * @param {object|null|undefined} user
- * @param {string[]} filtre toujours non vide
+ * @param {string[]} filtre
  */
 function auteurOk(user, filtre) {
   return (
@@ -40,30 +39,23 @@ function auteurOk(user, filtre) {
 }
 
 /**
- * @param {{ token: string, workspace: string, annee: number, users?: string[], user?: string, login?: string }} source
+ * @param {{ token: string, workspace: string, annee: number }} source
  */
 export async function collecterBitbucket(source) {
   if (!source.workspace) throw new Error('bitbucket: workspace manquant');
 
-  const declares = normaliserUsers(source);
-  /** @type {string[]} */
-  let filtre = declares;
+  const me = await bbGet(source.token, '/user');
+  const filtre = [
+    me?.nickname,
+    me?.username,
+    me?.display_name,
+    me?.uuid,
+    me?.account_id,
+  ]
+    .map(v => (v == null ? '' : String(v).trim()))
+    .filter(Boolean);
   if (filtre.length === 0) {
-    const me = await bbGet(source.token, '/user');
-    filtre = [
-      me?.nickname,
-      me?.username,
-      me?.display_name,
-      me?.uuid,
-      me?.account_id,
-    ]
-      .map(v => (v == null ? '' : String(v).trim()))
-      .filter(Boolean);
-    if (filtre.length === 0) {
-      throw new Error(
-        'bitbucket: impossible de résoudre le titulaire du jeton'
-      );
-    }
+    throw new Error('bitbucket: impossible de résoudre le titulaire du jeton');
   }
 
   /** @type {Map<string, number>} */

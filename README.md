@@ -33,46 +33,21 @@ le secret `SOURCES_JSON`, interroge chaque source, fusionne par jour, et
 ```json
 {
   "sources": [
-    { "kind": "github", "token": "ghp_…", "users": ["alice", "bob"] },
+    { "kind": "github", "token": "ghp_…" },
     { "kind": "github", "baseUrl": "https://ghe.exemple", "token": "…" },
-    {
-      "kind": "gitlab",
-      "baseUrl": "https://gitlab.com",
-      "token": "…",
-      "user": "alice"
-    },
-    {
-      "kind": "azuredevops",
-      "org": "mon-org",
-      "token": "…",
-      "users": ["alice@ex.com"]
-    },
-    {
-      "kind": "bitbucket",
-      "workspace": "mon-ws",
-      "token": "…",
-      "users": ["alice"]
-    }
+    { "kind": "gitlab", "baseUrl": "https://gitlab.com", "token": "…" },
+    { "kind": "azuredevops", "org": "mon-org", "token": "…" },
+    { "kind": "bitbucket", "workspace": "mon-ws", "token": "…" }
   ]
 }
 ```
 
 `kind` acceptés : `github`, `gitlab`, `azuredevops`, `bitbucket`. On peut
-répéter un `kind` (plusieurs instances).
+répéter un `kind` (plusieurs instances / plusieurs PAT).
 
-**Qui est compté** (par source / par PAT) :
-
-| Forge         | Sans `users`                     | Avec `users` / `user` |
-| ------------- | -------------------------------- | --------------------- |
-| `github`      | titulaire du jeton (`viewer`)    | logins listés         |
-| `gitlab`      | événements du jeton              | usernames listés      |
-| `azuredevops` | e-mail / display du jeton        | e-mails / noms listés |
-| `bitbucket`   | titulaire du jeton (`GET /user`) | nicknames listés      |
-
-Un PAT ne remonte **jamais** l’activité de tout un workspace ou d’une org.
-Plusieurs comptes voulus → `users: ["a","b"]` (ou plusieurs sources).
-
-Les logins **ne sortent pas** dans `donnees.json` (anonymat public).
+Chaque PAT ne remonte que l’activité de **son titulaire** (jamais tout un
+workspace ou une org). Plusieurs comptes → plusieurs sources, chacune avec
+son jeton. Aucun login ne sort dans `donnees.json`.
 
 Localement :
 

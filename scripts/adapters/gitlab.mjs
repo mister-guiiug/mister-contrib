@@ -1,12 +1,7 @@
 /**
- * Adapter GitLab.com / self-hosted : événements utilisateur (issues, MR,
- * pushes, commentaires) agrégés par jour, plus les projets touchés.
- *
- * Sans filtre : événements du jeton (`/events`).
- * Avec `users` : événements publics/accessibles de chaque username.
+ * Adapter GitLab.com / self-hosted : événements du titulaire du jeton
+ * (issues, MR, pushes, commentaires), plus les projets touchés.
  */
-
-import { normaliserUsers } from '../users.mjs';
 
 /**
  * @param {string} base
@@ -25,43 +20,25 @@ async function gitlabGet(base, token, path, query = {}) {
     },
   });
   if (!res.ok) throw new Error(`gitlab HTTP ${res.status} ${path}`);
-  const total = res.headers.get('x-total');
   const data = await res.json();
-  return { data, total: total ? Number(total) : null };
+  return { data };
 }
 
 /**
- * @param {string} base
- * @param {string} token
- * @param {string} username
+ * @param {{ token: string, baseUrl?: string, annee: number }} source
  */
-async function resolirUserId(base, token, username) {
-  const { data } = await gitlabGet(base, token, '/users', {
-    username,
-    per_page: '1',
-  });
-  const id = Array.isArray(data) ? data[0]?.id : null;
-  if (id == null)
-    throw new Error(`gitlab: utilisateur introuvable « ${username} »`);
-  return id;
-}
+export async function collecterGitlab(source) {
+  const base = source.baseUrl ?? 'https://gitlab.com';
+  const after = `${source.annee - 1}-12-31`;
+  const before = `${source.annee + 1}-01-01`;
 
-/**
- * @param {string} base
- * @param {string} token
- * @param {string} path
- * @param {number} annee
- * @param {string} after
- * @param {string} before
- */
-async function collecterEvents(base, token, path, annee, after, before) {
   /** @type {Map<string, number>} */
   const byDate = new Map();
   /** @type {Set<number|string>} */
   const projetsTouches = new Set();
   let page = 1;
   for (;;) {
-    const { data } = await gitlabGet(base, token, path, {
+    const { data } = await gitlabGet(base, source.token, '/events', {
       after,
       before,
       per_page: '100',
@@ -72,7 +49,7 @@ async function collecterEvents(base, token, path, annee, after, before) {
       const created = ev.created_at ?? ev.createdAt;
       if (!created) continue;
       const date = String(created).slice(0, 10);
-      if (!date.startsWith(String(annee))) continue;
+      if (!date.startsWith(String(source.annee))) continue;
       byDate.set(date, (byDate.get(date) ?? 0) + 1);
       const pid = ev.project_id ?? ev.project?.id;
       if (pid != null) projetsTouches.add(pid);
@@ -81,64 +58,10 @@ async function collecterEvents(base, token, path, annee, after, before) {
     page += 1;
     if (page > 50) break;
   }
-  return { byDate, projetsTouches };
-}
-
-/**
- * @param {{ token: string, baseUrl?: string, annee: number, users?: string[], user?: string, login?: string }} source
- */
-export async function collecterGitlab(source) {
-  const base = source.baseUrl ?? 'https://gitlab.com';
-  const after = `${source.annee - 1}-12-31`;
-  const before = `${source.annee + 1}-01-01`;
-  const users = normaliserUsers(source);
-
-  /** @type {Map<string, number>} */
-  const byDate = new Map();
-  /** @type {Set<number|string>} */
-  const projetsTouches = new Set();
-
-  /** @param {{ byDate: Map<string, number>, projetsTouches: Set<number|string> }} bloc */
-  const accumuler = bloc => {
-    for (const [date, count] of bloc.byDate) {
-      byDate.set(date, (byDate.get(date) ?? 0) + count);
-    }
-    for (const id of bloc.projetsTouches) projetsTouches.add(id);
-  };
-
-  if (users.length === 0) {
-    accumuler(
-      await collecterEvents(
-        base,
-        source.token,
-        '/events',
-        source.annee,
-        after,
-        before
-      )
-    );
-  } else {
-    for (const username of users) {
-      const id = await resolirUserId(base, source.token, username);
-      accumuler(
-        await collecterEvents(
-          base,
-          source.token,
-          `/users/${id}/events`,
-          source.annee,
-          after,
-          before
-        )
-      );
-    }
-  }
 
   const jours = [...byDate.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({ date, count }));
 
-  return {
-    depots: projetsTouches.size,
-    jours,
-  };
+  return { depots: projetsTouches.size, jours };
 }

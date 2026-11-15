@@ -1,10 +1,9 @@
 /**
- * Adapter Azure DevOps : commits + pull requests de l'année du (des)
- * auteur(s) ciblé(s). Sans `users` : titulaire du jeton uniquement —
+ * Adapter Azure DevOps : commits + PR du titulaire du jeton uniquement —
  * jamais tous les commits de l’organisation.
  */
 
-import { correspondUser, normaliserUsers } from '../users.mjs';
+import { correspondUser } from '../users.mjs';
 
 /**
  * @param {string} org
@@ -33,7 +32,7 @@ async function adoGet(org, token, path, query = {}) {
 }
 
 /**
- * @param {{ token: string, org: string, annee: number, users?: string[], user?: string, login?: string }} source
+ * @param {{ token: string, org: string, annee: number }} source
  */
 export async function collecterAzureDevops(source) {
   if (!source.org) throw new Error('azuredevops: org manquant');
@@ -46,7 +45,6 @@ export async function collecterAzureDevops(source) {
   const repos = reposBody.value ?? [];
   const from = `${source.annee}-01-01T00:00:00Z`;
   const to = `${source.annee}-12-31T23:59:59Z`;
-  const users = normaliserUsers(source);
 
   /** @type {Map<string, number>} */
   const byDate = new Map();
@@ -62,24 +60,17 @@ export async function collecterAzureDevops(source) {
     'api-version': '7.1-preview.1',
   }).catch(() => null);
   const tokenEmail =
-    me?.authenticatedUser?.properties?.Account?.['$value'] ??
-    me?.authenticatedUser?.providerDisplayName ??
-    null;
+    me?.authenticatedUser?.properties?.Account?.['$value'] ?? null;
   const tokenDisplay =
     me?.authenticatedUser?.providerDisplayName ??
     me?.authenticatedUser?.customDisplayName ??
     null;
-
-  /** Toujours un filtre : users déclarés, sinon titulaire du jeton. Jamais « tout le monde ». */
-  const filtre =
-    users.length > 0
-      ? users
-      : [tokenEmail, tokenDisplay]
-          .map(v => (v == null ? '' : String(v).trim()))
-          .filter(Boolean);
+  const filtre = [tokenEmail, tokenDisplay]
+    .map(v => (v == null ? '' : String(v).trim()))
+    .filter(Boolean);
   if (filtre.length === 0) {
     throw new Error(
-      'azuredevops: impossible de résoudre le titulaire du jeton (pose users[])'
+      'azuredevops: impossible de résoudre le titulaire du jeton'
     );
   }
 
