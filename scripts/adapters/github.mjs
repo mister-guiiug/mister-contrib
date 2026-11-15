@@ -1,17 +1,12 @@
 /**
  * Adapter GitHub.com / GitHub Enterprise : calendrier officiel via GraphQL
- * `contributionsCollection`, plus le nombre de dépôts du viewer.
+ * `contributionsCollection`, plus le nombre de dépôts où le viewer a
+ * intervenu pendant l’année (pas le total des dépôts accessibles).
  */
 
 const QUERY = `
 query Contrib($from: DateTime!, $to: DateTime!) {
   viewer {
-    repositories(
-      affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]
-      first: 1
-    ) {
-      totalCount
-    }
     contributionsCollection(from: $from, to: $to) {
       contributionCalendar {
         totalContributions
@@ -20,6 +15,23 @@ query Contrib($from: DateTime!, $to: DateTime!) {
             date
             contributionCount
           }
+        }
+      }
+      commitContributionsByRepository(maxRepositories: 100) {
+        repository { databaseId }
+      }
+      issueContributionsByRepository(maxRepositories: 100) {
+        repository { databaseId }
+      }
+      pullRequestContributionsByRepository(maxRepositories: 100) {
+        repository { databaseId }
+      }
+      pullRequestReviewContributionsByRepository(maxRepositories: 100) {
+        repository { databaseId }
+      }
+      repositoryContributions(first: 100) {
+        nodes {
+          repository { databaseId }
         }
       }
     }
@@ -41,6 +53,18 @@ function graphqlEndpoint(baseUrl) {
   let path = u.pathname.replace(/\/+$/, '');
   if (path.endsWith('/api/v3')) path = path.slice(0, -'/api/v3'.length);
   return `${u.origin}${path}/api/graphql`;
+}
+
+/** @param {unknown} coll */
+function idsDepuisByRepo(coll) {
+  /** @type {number[]} */
+  const ids = [];
+  if (!Array.isArray(coll)) return ids;
+  for (const row of coll) {
+    const id = row?.repository?.databaseId;
+    if (typeof id === 'number') ids.push(id);
+  }
+  return ids;
 }
 
 export async function collecterGithub(source) {
@@ -69,9 +93,8 @@ export async function collecterGithub(source) {
     throw new Error(`github GraphQL: ${body.errors[0].message}`);
   }
 
-  const viewer = body.data?.viewer;
-  const weeks =
-    viewer?.contributionsCollection?.contributionCalendar?.weeks ?? [];
+  const collection = body.data?.viewer?.contributionsCollection;
+  const weeks = collection?.contributionCalendar?.weeks ?? [];
   const jours = [];
   for (const week of weeks) {
     for (const day of week.contributionDays ?? []) {
@@ -80,8 +103,16 @@ export async function collecterGithub(source) {
     }
   }
 
+  const uniques = new Set([
+    ...idsDepuisByRepo(collection?.commitContributionsByRepository),
+    ...idsDepuisByRepo(collection?.issueContributionsByRepository),
+    ...idsDepuisByRepo(collection?.pullRequestContributionsByRepository),
+    ...idsDepuisByRepo(collection?.pullRequestReviewContributionsByRepository),
+    ...idsDepuisByRepo(collection?.repositoryContributions?.nodes),
+  ]);
+
   return {
-    depots: viewer?.repositories?.totalCount ?? 0,
+    depots: uniques.size,
     jours,
   };
 }

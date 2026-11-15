@@ -1,6 +1,6 @@
 /**
  * Adapter Azure DevOps : commits + pull requests de l'année, plus le nombre
- * de dépôts git de l'organisation. Approximation des indicateurs GH/GL.
+ * de dépôts git où l’utilisateur a intervenu. Approximation des indicateurs GH/GL.
  */
 
 /**
@@ -46,9 +46,12 @@ export async function collecterAzureDevops(source) {
 
   /** @type {Map<string, number>} */
   const byDate = new Map();
-  const bump = date => {
+  /** @type {Set<string>} */
+  const depotsTouches = new Set();
+  const bump = (date, repoId) => {
     if (!date?.startsWith(String(source.annee))) return;
     byDate.set(date, (byDate.get(date) ?? 0) + 1);
+    if (repoId) depotsTouches.add(String(repoId));
   };
 
   const me = await adoGet(source.org, source.token, '/_apis/connectionData', {
@@ -83,7 +86,7 @@ export async function collecterAzureDevops(source) {
           0,
           10
         );
-        bump(date);
+        bump(date, repoId);
       }
     } catch {
       // un dépôt inaccessible ne bloque pas le reste
@@ -102,7 +105,7 @@ export async function collecterAzureDevops(source) {
       );
       for (const pr of prs.value ?? []) {
         const date = String(pr.creationDate ?? '').slice(0, 10);
-        bump(date);
+        bump(date, repoId);
       }
     } catch {
       // idem
@@ -113,5 +116,5 @@ export async function collecterAzureDevops(source) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({ date, count }));
 
-  return { depots: repos.length, jours };
+  return { depots: depotsTouches.size, jours };
 }

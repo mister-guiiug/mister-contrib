@@ -1,6 +1,7 @@
 /**
  * Adapter GitLab.com / self-hosted : événements utilisateur (issues, MR,
- * pushes, commentaires) agrégés par jour, plus le nombre de projets.
+ * pushes, commentaires) agrégés par jour, plus le nombre de projets où
+ * l’utilisateur a réellement intervenu pendant l’année.
  */
 
 /**
@@ -33,14 +34,10 @@ export async function collecterGitlab(source) {
   const after = `${source.annee - 1}-12-31`;
   const before = `${source.annee + 1}-01-01`;
 
-  const projets = await gitlabGet(base, source.token, '/projects', {
-    membership: 'true',
-    simple: 'true',
-    per_page: '1',
-  });
-
   /** @type {Map<string, number>} */
   const byDate = new Map();
+  /** @type {Set<number|string>} */
+  const projetsTouches = new Set();
   let page = 1;
   for (;;) {
     const { data } = await gitlabGet(base, source.token, '/events', {
@@ -56,6 +53,8 @@ export async function collecterGitlab(source) {
       const date = String(created).slice(0, 10);
       if (!date.startsWith(String(source.annee))) continue;
       byDate.set(date, (byDate.get(date) ?? 0) + 1);
+      const pid = ev.project_id ?? ev.project?.id;
+      if (pid != null) projetsTouches.add(pid);
     }
     if (data.length < 100) break;
     page += 1;
@@ -67,8 +66,7 @@ export async function collecterGitlab(source) {
     .map(([date, count]) => ({ date, count }));
 
   return {
-    depots:
-      projets.total ?? (Array.isArray(projets.data) ? projets.data.length : 0),
+    depots: projetsTouches.size,
     jours,
   };
 }

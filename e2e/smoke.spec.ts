@@ -22,6 +22,11 @@ test.describe('@critical le cadre', () => {
     );
     await expect(page.getByTestId('depots-total')).toBeVisible();
     await expect(page.locator('.contrib-home__stats')).toBeVisible();
+    await expect(page.getByTestId('contrib-day-detail')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Rythme de la semaine' })
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Pics / })).toBeVisible();
   });
 
   test('le calendrier ne nomme aucune forge', async ({ page }) => {

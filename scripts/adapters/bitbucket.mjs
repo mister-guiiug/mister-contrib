@@ -1,5 +1,6 @@
 /**
- * Adapter Bitbucket Cloud : dépôts du workspace + commits / PRs de l'année.
+ * Adapter Bitbucket Cloud : commits / PRs de l'année, plus le nombre de
+ * dépôts du workspace où l’utilisateur a intervenu.
  */
 
 /**
@@ -29,9 +30,12 @@ export async function collecterBitbucket(source) {
 
   /** @type {Map<string, number>} */
   const byDate = new Map();
-  const bump = date => {
+  /** @type {Set<string>} */
+  const depotsTouches = new Set();
+  const bump = (date, repoKey) => {
     if (!date?.startsWith(String(source.annee))) return;
     byDate.set(date, (byDate.get(date) ?? 0) + 1);
+    if (repoKey) depotsTouches.add(repoKey);
   };
 
   const repos = [];
@@ -85,7 +89,7 @@ export async function collecterBitbucket(source) {
             commitsNext = null;
             break;
           }
-          bump(date);
+          bump(date, full);
         }
         if (!commitsNext) break;
         commitsNext = body.next ?? null;
@@ -102,7 +106,7 @@ export async function collecterBitbucket(source) {
       );
       for (const pr of prs.values ?? []) {
         const date = String(pr.created_on ?? '').slice(0, 10);
-        bump(date);
+        bump(date, full);
       }
     } catch {
       // idem
@@ -113,5 +117,5 @@ export async function collecterBitbucket(source) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({ date, count }));
 
-  return { depots: repos.length, jours };
+  return { depots: depotsTouches.size, jours };
 }

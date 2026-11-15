@@ -1,39 +1,117 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../../i18n/index.ts';
-import { grilleAnnee } from './calendar.ts';
+import {
+  dernierJourActif,
+  grilleAnnee,
+  grilleRecente,
+  type Cellule,
+} from './calendar.ts';
 import type { Jour } from './types.ts';
+
+type Vue = 'recente' | 'annee';
 
 type Props = {
   annee: number;
   jours: Jour[];
+  partiel?: boolean;
 };
 
 const JOURS_LIBELLES = ['', 'Lun', '', 'Mer', '', 'Ven', ''] as const;
 
+function usePrefereMobile() {
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(max-width: 39.99rem)').matches
+      : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 39.99rem)');
+    const sync = () => setMobile(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+  return mobile;
+}
+
 /**
  * Calendrier type contribution graph.
- * Mobile : scroll horizontal, cellules lisibles, ancré sur la fin d’année.
- * Desktop : grille qui remplit la largeur du contenu.
+ * Mobile : 13 semaines par défaut (cellules lisibles), bascule vers l’année.
+ * Détail du jour ancré sous la grille ; cases grisées après la coupure partielle.
  */
-export function ContributionCalendar({ annee, jours }: Props) {
-  const { t } = useI18n();
+export function ContributionCalendar({ annee, jours, partiel }: Props) {
+  const { t, fmt } = useI18n();
+  const mobile = usePrefereMobile();
+  const [vue, setVue] = useState<Vue>('recente');
+  const vueEffective: Vue = mobile ? vue : 'annee';
+
   const { semaines, mois } = useMemo(
-    () => grilleAnnee(annee, jours),
-    [annee, jours]
+    () =>
+      vueEffective === 'recente'
+        ? grilleRecente(annee, jours, 13)
+        : grilleAnnee(annee, jours),
+    [annee, jours, vueEffective]
   );
-  const [survol, setSurvol] = useState<string | null>(null);
+
+  const coupure = useMemo(
+    () => (partiel ? dernierJourActif(jours) : null),
+    [partiel, jours]
+  );
+
+  const [selection, setSelection] = useState<Cellule | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    // Sur mobile le début d’année (souvent vide) occupe l’écran : on part
-    // vers la droite, là où l’activité récente se lit.
     el.scrollLeft = el.scrollWidth;
-  }, [semaines.length]);
+  }, [semaines.length, vueEffective]);
+
+  useEffect(() => {
+    // Premier jour actif récent comme détail initial, sinon dernière cellule.
+    const plates = semaines.flat().filter((c): c is Cellule => c !== null);
+    const actif = [...plates].reverse().find(c => c.count > 0) ?? null;
+    setSelection(actif);
+  }, [semaines]);
+
+  const detail = selection
+    ? t('home.dayDetail', {
+        count: fmt.number(selection.count),
+        date: fmt.date(new Date(`${selection.date}T12:00:00Z`)),
+      })
+    : t('home.dayDetailEmpty');
 
   return (
-    <div className="contrib-calendar" data-testid="contrib-calendar">
+    <div
+      className="contrib-calendar"
+      data-testid="contrib-calendar"
+      data-vue={vueEffective}
+    >
+      {mobile ? (
+        <div
+          className="contrib-calendar__vues"
+          role="group"
+          aria-label={t('home.viewGroup')}
+        >
+          <button
+            type="button"
+            className="contrib-calendar__vue"
+            aria-pressed={vue === 'recente'}
+            onClick={() => setVue('recente')}
+          >
+            {t('home.viewRecent')}
+          </button>
+          <button
+            type="button"
+            className="contrib-calendar__vue"
+            aria-pressed={vue === 'annee'}
+            onClick={() => setVue('annee')}
+          >
+            {t('home.viewYear')}
+          </button>
+        </div>
+      ) : null}
+
       <div
         ref={scrollRef}
         className="contrib-calendar__scroll"
@@ -82,19 +160,24 @@ export function ContributionCalendar({ annee, jours }: Props) {
                         />
                       );
                     }
+                    const apresCoupure =
+                      coupure !== null && cellule.date > coupure;
                     const titre = t('home.dayTitle', {
                       count: cellule.count,
                       date: cellule.date,
                     });
+                    const selected = selection?.date === cellule.date;
                     return (
-                      <span
+                      <button
+                        type="button"
                         key={cellule.date}
                         className="contrib-calendar__cell"
-                        data-level={cellule.niveau}
-                        title={titre}
-                        onMouseEnter={() => setSurvol(titre)}
-                        onMouseLeave={() => setSurvol(null)}
-                        onPointerDown={() => setSurvol(titre)}
+                        data-level={apresCoupure ? 0 : cellule.niveau}
+                        data-partial={apresCoupure ? 'true' : undefined}
+                        data-selected={selected ? 'true' : undefined}
+                        aria-label={titre}
+                        aria-pressed={selected}
+                        onClick={() => setSelection(cellule)}
                       />
                     );
                   })}
@@ -103,6 +186,15 @@ export function ContributionCalendar({ annee, jours }: Props) {
             </div>
           </div>
         </div>
+      </div>
+
+      <div
+        className="contrib-calendar__detail"
+        role="status"
+        aria-live="polite"
+        data-testid="contrib-day-detail"
+      >
+        <p className="contrib-calendar__detail-value m-0">{detail}</p>
       </div>
 
       <div className="contrib-calendar__pied">
@@ -115,14 +207,6 @@ export function ContributionCalendar({ annee, jours }: Props) {
           <span>{t('home.more')}</span>
         </div>
       </div>
-
-      <p
-        className="contrib-calendar__survol m-0"
-        role="status"
-        aria-live="polite"
-      >
-        {survol ?? '\u00a0'}
-      </p>
     </div>
   );
 }

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ageRelatif, grilleAnnee, niveauxPour } from './calendar.ts';
+import {
+  ageRelatif,
+  dernierJourActif,
+  grilleAnnee,
+  grilleRecente,
+  niveauxPour,
+  picsActivite,
+  rythmeSemaine,
+} from './calendar.ts';
 
 describe('niveauxPour', () => {
   it('met 0 sur les jours vides', () => {
@@ -20,6 +28,42 @@ describe('grilleAnnee', () => {
     expect(cellules.some(c => c!.date === '2026-06-15' && c!.count === 3)).toBe(
       true
     );
+  });
+});
+
+describe('grilleRecente', () => {
+  it('ne garde que les dernières semaines', () => {
+    const pleine = grilleAnnee(2026, [{ date: '2026-11-01', count: 2 }]);
+    const { semaines } = grilleRecente(
+      2026,
+      [{ date: '2026-11-01', count: 2 }],
+      13
+    );
+    expect(semaines.length).toBe(Math.min(13, pleine.semaines.length));
+  });
+});
+
+describe('dernierJourActif / pics / rythme', () => {
+  const jours = [
+    { date: '2026-01-05', count: 10 }, // lundi
+    { date: '2026-01-06', count: 20 }, // mardi
+    { date: '2026-01-11', count: 5 }, // dimanche
+    { date: '2026-10-26', count: 100 },
+  ];
+
+  it('retrouve le dernier jour actif', () => {
+    expect(dernierJourActif(jours)).toBe('2026-10-26');
+  });
+
+  it('classe les pics', () => {
+    expect(picsActivite(jours, 2).map(j => j.count)).toEqual([100, 20]);
+  });
+
+  it('moyenne par jour de semaine', () => {
+    const r = rythmeSemaine(jours);
+    expect(r).toHaveLength(7);
+    // 2026-01-05 et 2026-10-26 sont tous deux des lundis
+    expect(r[1]!.moyenne).toBe(55);
   });
 });
 
