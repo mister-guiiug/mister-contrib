@@ -12,7 +12,7 @@ const JOURS_LIBELLES = ['', 'Lun', '', 'Mer', '', 'Ven', ''] as const;
 
 /**
  * Calendrier type contribution graph : 7 lignes × semaines, légende Less→More.
- * Couleurs via `--contrib-n` (palette propre, ni vert GitHub ni orange GitLab).
+ * Cellules en `span` (pas de boutons) pour rester compatible avec `role="img"`.
  */
 export function ContributionCalendar({ annee, jours }: Props) {
   const { t } = useI18n();
@@ -97,15 +97,11 @@ export function ContributionCalendar({ annee, jours }: Props) {
                     date: cellule.date,
                   });
                   return (
-                    <button
+                    <span
                       key={cellule.date}
-                      type="button"
                       className="contrib-calendar__cell"
                       data-level={cellule.niveau}
                       title={titre}
-                      aria-label={titre}
-                      onFocus={() => setSurvol(titre)}
-                      onBlur={() => setSurvol(null)}
                       onMouseEnter={() => setSurvol(titre)}
                       onMouseLeave={() => setSurvol(null)}
                     />

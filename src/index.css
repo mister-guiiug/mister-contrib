@@ -134,7 +134,6 @@ body {
   border: 0;
   border-radius: 0.15rem;
   background: var(--contrib-0);
-  cursor: default;
 }
 
 .contrib-calendar__cell--empty {

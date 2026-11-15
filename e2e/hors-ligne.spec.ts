@@ -34,11 +34,14 @@ test.describe('@critical hors ligne', () => {
 
     await page.reload();
 
-    // ANCRÉ SUR CE QUE SEUL REACT REND. Le calendrier ne sort que du rendu.
-    await expect(page.getByTestId('contrib-calendar')).toBeVisible();
+    // ANCRÉ SUR CE QUE SEUL REACT REND. Le h1 statique du HTML ne suffit pas :
+    // le calendrier (ou son repli vide) prouve que React a monté.
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'Mister Contrib'
     );
+    await expect(page.getByTestId('contrib-calendar')).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.locator('[data-dwc="connection-banner"]')).toBeVisible({
       timeout: 10_000,
     });

@@ -9,6 +9,16 @@ import { ContributionCalendar } from './ContributionCalendar.tsx';
 import { loadDonnees } from './loadDonnees.ts';
 import type { Donnees } from './types.ts';
 
+function vide(annee = new Date().getFullYear()): Donnees {
+  return {
+    genere: null,
+    annee,
+    contributions: 0,
+    depots: 0,
+    jours: [],
+  };
+}
+
 /**
  * Accueil public : totaux + calendrier consolidé. Aucune forge n'est nommée.
  * Garde l'accroche `app.tagline` et le pied de page famille.
@@ -27,7 +37,10 @@ export function HomeScreen() {
       })
       .catch(err => {
         if (ac.signal.aborted) return;
+        // Hors ligne / JSON absent : on garde un calendrier vide plutôt qu'un
+        // écran mort — le service worker peut servir l'app sans l'instantané.
         setErreur(err instanceof Error ? err.message : String(err));
+        setDonnees(prev => prev ?? vide());
       });
     return () => ac.abort();
   }, []);
