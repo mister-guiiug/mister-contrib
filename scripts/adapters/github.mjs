@@ -1,17 +1,11 @@
 /**
- * Adapter GitHub.com / GitHub Enterprise : calendrier officiel via GraphQL
- * `contributionsCollection`, plus le nombre de dépôts du viewer.
+ * Adapter GitHub.com / GitHub Enterprise : calendrier du titulaire du jeton
+ * (`viewer`) via GraphQL `contributionsCollection`, plus les dépôts touchés.
  */
 
 const QUERY = `
 query Contrib($from: DateTime!, $to: DateTime!) {
   viewer {
-    repositories(
-      affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]
-      first: 1
-    ) {
-      totalCount
-    }
     contributionsCollection(from: $from, to: $to) {
       contributionCalendar {
         totalContributions
@@ -20,6 +14,23 @@ query Contrib($from: DateTime!, $to: DateTime!) {
             date
             contributionCount
           }
+        }
+      }
+      commitContributionsByRepository(maxRepositories: 100) {
+        repository { databaseId }
+      }
+      issueContributionsByRepository(maxRepositories: 100) {
+        repository { databaseId }
+      }
+      pullRequestContributionsByRepository(maxRepositories: 100) {
+        repository { databaseId }
+      }
+      pullRequestReviewContributionsByRepository(maxRepositories: 100) {
+        repository { databaseId }
+      }
+      repositoryContributions(first: 100) {
+        nodes {
+          repository { databaseId }
         }
       }
     }
@@ -43,9 +54,20 @@ function graphqlEndpoint(baseUrl) {
   return `${u.origin}${path}/api/graphql`;
 }
 
+/** @param {unknown} coll */
+function idsDepuisByRepo(coll) {
+  /** @type {number[]} */
+  const ids = [];
+  if (!Array.isArray(coll)) return ids;
+  for (const row of coll) {
+    const id = row?.repository?.databaseId;
+    if (typeof id === 'number') ids.push(id);
+  }
+  return ids;
+}
+
 export async function collecterGithub(source) {
   const graphql = graphqlEndpoint(source.baseUrl);
-
   const from = `${source.annee}-01-01T00:00:00Z`;
   const to = `${source.annee}-12-31T23:59:59Z`;
 
@@ -60,18 +82,14 @@ export async function collecterGithub(source) {
     body: JSON.stringify({ query: QUERY, variables: { from, to } }),
   });
 
-  if (!res.ok) {
-    throw new Error(`github HTTP ${res.status}`);
-  }
-
+  if (!res.ok) throw new Error(`github HTTP ${res.status}`);
   const body = await res.json();
   if (body.errors?.length) {
     throw new Error(`github GraphQL: ${body.errors[0].message}`);
   }
 
-  const viewer = body.data?.viewer;
-  const weeks =
-    viewer?.contributionsCollection?.contributionCalendar?.weeks ?? [];
+  const collection = body.data?.viewer?.contributionsCollection;
+  const weeks = collection?.contributionCalendar?.weeks ?? [];
   const jours = [];
   for (const week of weeks) {
     for (const day of week.contributionDays ?? []) {
@@ -80,8 +98,13 @@ export async function collecterGithub(source) {
     }
   }
 
-  return {
-    depots: viewer?.repositories?.totalCount ?? 0,
-    jours,
-  };
+  const uniques = new Set([
+    ...idsDepuisByRepo(collection?.commitContributionsByRepository),
+    ...idsDepuisByRepo(collection?.issueContributionsByRepository),
+    ...idsDepuisByRepo(collection?.pullRequestContributionsByRepository),
+    ...idsDepuisByRepo(collection?.pullRequestReviewContributionsByRepository),
+    ...idsDepuisByRepo(collection?.repositoryContributions?.nodes),
+  ]);
+
+  return { depots: uniques.size, jours };
 }

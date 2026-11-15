@@ -1,6 +1,10 @@
 /**
  * Fusionne les résultats des adapters en un instantané public anonymisé.
  * Aucune clé `kind`, URL ou détail de source ne doit sortir d'ici.
+ *
+ * `depots` additionne, par source, le nombre de dépôts où une intervention
+ * a été mesurée sur l’année — pas le catalogue accessible. Deux forges
+ * distinctes restent deux comptes : on n’a pas d’identité croisée anonymisée.
  */
 
 /**

@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppFooter } from '@mister-guiiug/dev-pwa-config/react/app-footer';
 import { ErrorBanner } from '@mister-guiiug/dev-pwa-config/react/error-banner';
 import { SkeletonGroup } from '@mister-guiiug/dev-pwa-config/react/skeleton';
 import { useI18n } from '../../i18n/index.ts';
 import { REPO_URL } from '../../app/links.ts';
-import { ageRelatif } from './calendar.ts';
+import { ageRelatif, picsActivite, rythmeSemaine } from './calendar.ts';
 import { ContributionCalendar } from './ContributionCalendar.tsx';
 import { loadDonnees } from './loadDonnees.ts';
 import type { Donnees } from './types.ts';
@@ -19,9 +19,11 @@ function vide(annee = new Date().getFullYear()): Donnees {
   };
 }
 
+const DOW_SHORT = ['D', 'L', 'M', 'M', 'J', 'V', 'S'] as const;
+
 /**
- * Accueil public : totaux + calendrier consolidé. Aucune forge n'est nommée.
- * Garde l'accroche `app.tagline` et le pied de page famille.
+ * Accueil public : totaux + calendrier consolidé + rythme + pics.
+ * Aucune forge n'est nommée. Garde l'accroche et le pied de page famille.
  */
 export function HomeScreen() {
   const { t, fmt } = useI18n();
@@ -46,6 +48,15 @@ export function HomeScreen() {
   }, []);
 
   const age = ageRelatif(donnees?.genere ?? null);
+  const rythme = useMemo(
+    () => (donnees ? rythmeSemaine(donnees.jours) : []),
+    [donnees]
+  );
+  const pics = useMemo(
+    () => (donnees ? picsActivite(donnees.jours, 5) : []),
+    [donnees]
+  );
+  const maxRythme = Math.max(1, ...rythme.map(r => r.moyenne));
 
   return (
     <div className="contrib-home">
@@ -93,7 +104,74 @@ export function HomeScreen() {
             </div>
           </div>
 
-          <ContributionCalendar annee={donnees.annee} jours={donnees.jours} />
+          <ContributionCalendar
+            annee={donnees.annee}
+            jours={donnees.jours}
+            partiel={donnees.partiel}
+          />
+
+          <div className="contrib-home__annexes">
+            <section
+              className="contrib-home__annexe"
+              aria-labelledby="contrib-rythme-titre"
+            >
+              <h2
+                id="contrib-rythme-titre"
+                className="contrib-home__annexe-titre"
+              >
+                {t('home.weekdayTitle')}
+              </h2>
+              <div
+                className="contrib-rythme"
+                role="img"
+                aria-label={t('home.weekdayAria')}
+              >
+                {rythme.map(r => (
+                  <div key={r.dow} className="contrib-rythme__col">
+                    <div
+                      className="contrib-rythme__bar"
+                      style={{
+                        height: `${Math.max(4, Math.round((r.moyenne / maxRythme) * 72))}px`,
+                      }}
+                      title={t('home.weekdayBar', {
+                        day: DOW_SHORT[r.dow]!,
+                        count: fmt.number(Math.round(r.moyenne)),
+                      })}
+                    />
+                    <span className="contrib-rythme__label">
+                      {DOW_SHORT[r.dow]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section
+              className="contrib-home__annexe"
+              aria-labelledby="contrib-pics-titre"
+            >
+              <h2
+                id="contrib-pics-titre"
+                className="contrib-home__annexe-titre"
+              >
+                {t('home.peaksTitle', { year: donnees.annee })}
+              </h2>
+              {pics.length === 0 ? (
+                <p className="contrib-home__annexe-vide m-0">
+                  {t('home.peaksEmpty')}
+                </p>
+              ) : (
+                <ol className="contrib-pics m-0">
+                  {pics.map(p => (
+                    <li key={p.date} className="contrib-pics__item">
+                      <span>{fmt.date(new Date(`${p.date}T12:00:00Z`))}</span>
+                      <b>{fmt.number(p.count)}</b>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          </div>
         </>
       ) : null}
 

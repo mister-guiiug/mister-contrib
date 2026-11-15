@@ -107,6 +107,63 @@ export function grilleAnnee(
   return { semaines, mois };
 }
 
+/**
+ * Fenêtre glissante : les `nbSemaines` dernières semaines qui touchent
+ * l’année (dimanche en tête, comme `grilleAnnee`).
+ */
+export function grilleRecente(
+  annee: number,
+  jours: Jour[],
+  nbSemaines = 13
+): { semaines: (Cellule | null)[][]; mois: { label: string; col: number }[] } {
+  const pleine = grilleAnnee(annee, jours);
+  const debut = Math.max(0, pleine.semaines.length - nbSemaines);
+  const semaines = pleine.semaines.slice(debut);
+  const mois = pleine.mois
+    .filter(m => m.col >= debut)
+    .map(m => ({ label: m.label, col: m.col - debut }));
+  return { semaines, mois };
+}
+
+/** Dernier jour de l’année avec au moins une contribution. */
+export function dernierJourActif(jours: Jour[]): string | null {
+  let max: string | null = null;
+  for (const j of jours) {
+    if (j.count > 0 && (max === null || j.date > max)) max = j.date;
+  }
+  return max;
+}
+
+const DOW_ORDER = [0, 1, 2, 3, 4, 5, 6] as const;
+
+/**
+ * Moyenne de contributions par jour de semaine (0 = dimanche UTC).
+ * Les jours à 0 comptent : un dimanche calme tire la moyenne vers le bas.
+ */
+export function rythmeSemaine(
+  jours: Jour[]
+): { dow: number; moyenne: number }[] {
+  const sommes = [0, 0, 0, 0, 0, 0, 0];
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  for (const j of jours) {
+    const dow = new Date(`${j.date}T12:00:00Z`).getUTCDay();
+    sommes[dow]! += j.count;
+    counts[dow]! += 1;
+  }
+  return DOW_ORDER.map(dow => ({
+    dow,
+    moyenne: counts[dow]! > 0 ? sommes[dow]! / counts[dow]! : 0,
+  }));
+}
+
+/** Jours les plus denses, triés par volume puis date. */
+export function picsActivite(jours: Jour[], n = 5): Jour[] {
+  return [...jours]
+    .filter(j => j.count > 0)
+    .sort((a, b) => b.count - a.count || b.date.localeCompare(a.date))
+    .slice(0, n);
+}
+
 /** Relatif « Vérifié il y a … » à partir d'un ISO. */
 export function ageRelatif(
   genere: string | null,

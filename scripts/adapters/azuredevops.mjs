@@ -1,7 +1,9 @@
 /**
- * Adapter Azure DevOps : commits + pull requests de l'année, plus le nombre
- * de dépôts git de l'organisation. Approximation des indicateurs GH/GL.
+ * Adapter Azure DevOps : commits + PR du titulaire du jeton uniquement —
+ * jamais tous les commits de l’organisation.
  */
+
+import { correspondUser } from '../users.mjs';
 
 /**
  * @param {string} org
@@ -46,18 +48,31 @@ export async function collecterAzureDevops(source) {
 
   /** @type {Map<string, number>} */
   const byDate = new Map();
-  const bump = date => {
+  /** @type {Set<string>} */
+  const depotsTouches = new Set();
+  const bump = (date, repoId) => {
     if (!date?.startsWith(String(source.annee))) return;
     byDate.set(date, (byDate.get(date) ?? 0) + 1);
+    if (repoId) depotsTouches.add(String(repoId));
   };
 
   const me = await adoGet(source.org, source.token, '/_apis/connectionData', {
     'api-version': '7.1-preview.1',
   }).catch(() => null);
-  const authorEmail =
-    me?.authenticatedUser?.properties?.Account?.['$value'] ??
+  const tokenEmail =
+    me?.authenticatedUser?.properties?.Account?.['$value'] ?? null;
+  const tokenDisplay =
     me?.authenticatedUser?.providerDisplayName ??
+    me?.authenticatedUser?.customDisplayName ??
     null;
+  const filtre = [tokenEmail, tokenDisplay]
+    .map(v => (v == null ? '' : String(v).trim()))
+    .filter(Boolean);
+  if (filtre.length === 0) {
+    throw new Error(
+      'azuredevops: impossible de résoudre le titulaire du jeton'
+    );
+  }
 
   for (const repo of repos) {
     const project = repo.project?.name;
@@ -65,25 +80,25 @@ export async function collecterAzureDevops(source) {
     if (!project || !repoId) continue;
 
     try {
-      const commits = await adoGet(
-        source.org,
-        source.token,
-        `/${encodeURIComponent(project)}/_apis/git/repositories/${repoId}/commits`,
-        {
-          'searchCriteria.fromDate': from,
-          'searchCriteria.toDate': to,
-          ...(authorEmail
-            ? { 'searchCriteria.author': String(authorEmail) }
-            : {}),
-          $top: '100',
-        }
-      );
-      for (const c of commits.value ?? []) {
-        const date = String(c.author?.date ?? c.committer?.date ?? '').slice(
-          0,
-          10
+      for (const auteur of filtre) {
+        const commits = await adoGet(
+          source.org,
+          source.token,
+          `/${encodeURIComponent(project)}/_apis/git/repositories/${repoId}/commits`,
+          {
+            'searchCriteria.fromDate': from,
+            'searchCriteria.toDate': to,
+            'searchCriteria.author': auteur,
+            $top: '100',
+          }
         );
-        bump(date);
+        for (const c of commits.value ?? []) {
+          const date = String(c.author?.date ?? c.committer?.date ?? '').slice(
+            0,
+            10
+          );
+          bump(date, repoId);
+        }
       }
     } catch {
       // un dépôt inaccessible ne bloque pas le reste
@@ -101,8 +116,14 @@ export async function collecterAzureDevops(source) {
         }
       );
       for (const pr of prs.value ?? []) {
+        const createur =
+          pr.createdBy?.uniqueName ??
+          pr.createdBy?.directoryAlias ??
+          pr.createdBy?.displayName ??
+          null;
+        if (!correspondUser(createur, filtre)) continue;
         const date = String(pr.creationDate ?? '').slice(0, 10);
-        bump(date);
+        bump(date, repoId);
       }
     } catch {
       // idem
@@ -113,5 +134,5 @@ export async function collecterAzureDevops(source) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({ date, count }));
 
-  return { depots: repos.length, jours };
+  return { depots: depotsTouches.size, jours };
 }

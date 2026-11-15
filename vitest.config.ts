@@ -21,6 +21,9 @@ export default defineConfig({
   },
   test: {
     ...baseTestOptions,
+    // Scripts Node (releve, fusion) : `.mjs` hors de `src/`, sinon leurs
+    // `*.test.mjs` ne tournaient jamais (include socle = src seulement).
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.test.mjs'],
     // Les specs Playwright vivent dans `e2e/` : Vitest ne doit pas y piocher.
     exclude: ['**/node_modules/**', '**/e2e/**'],
     // Vitest stube les feuilles : `import … from './index.css?raw'` rendrait

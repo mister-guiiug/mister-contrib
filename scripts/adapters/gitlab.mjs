@@ -1,6 +1,6 @@
 /**
- * Adapter GitLab.com / self-hosted : événements utilisateur (issues, MR,
- * pushes, commentaires) agrégés par jour, plus le nombre de projets.
+ * Adapter GitLab.com / self-hosted : événements du titulaire du jeton
+ * (issues, MR, pushes, commentaires), plus les projets touchés.
  */
 
 /**
@@ -20,9 +20,8 @@ async function gitlabGet(base, token, path, query = {}) {
     },
   });
   if (!res.ok) throw new Error(`gitlab HTTP ${res.status} ${path}`);
-  const total = res.headers.get('x-total');
   const data = await res.json();
-  return { data, total: total ? Number(total) : null };
+  return { data };
 }
 
 /**
@@ -33,14 +32,10 @@ export async function collecterGitlab(source) {
   const after = `${source.annee - 1}-12-31`;
   const before = `${source.annee + 1}-01-01`;
 
-  const projets = await gitlabGet(base, source.token, '/projects', {
-    membership: 'true',
-    simple: 'true',
-    per_page: '1',
-  });
-
   /** @type {Map<string, number>} */
   const byDate = new Map();
+  /** @type {Set<number|string>} */
+  const projetsTouches = new Set();
   let page = 1;
   for (;;) {
     const { data } = await gitlabGet(base, source.token, '/events', {
@@ -56,6 +51,8 @@ export async function collecterGitlab(source) {
       const date = String(created).slice(0, 10);
       if (!date.startsWith(String(source.annee))) continue;
       byDate.set(date, (byDate.get(date) ?? 0) + 1);
+      const pid = ev.project_id ?? ev.project?.id;
+      if (pid != null) projetsTouches.add(pid);
     }
     if (data.length < 100) break;
     page += 1;
@@ -66,9 +63,5 @@ export async function collecterGitlab(source) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({ date, count }));
 
-  return {
-    depots:
-      projets.total ?? (Array.isArray(projets.data) ? projets.data.length : 0),
-    jours,
-  };
+  return { depots: projetsTouches.size, jours };
 }
