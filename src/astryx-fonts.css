@@ -1,0 +1,48 @@
+/*
+ * LES POLICES DU THÈME BUTTER, SERVIES PAR L'APPLICATION.
+ *
+ * `@astryxdesign/theme-butter/fonts.css` les demande à Google Fonts, par un
+ * `@import` vers `fonts.googleapis.com`. La CSP du socle le refuse
+ * (`style-src`, et `font-src 'self'` pour les fichiers) : la vérification
+ * qui suit chaque déploiement échouait sur cette violation, et les polices
+ * ne s'affichaient de toute façon jamais. Servies d'ici, elles passent la
+ * CSP sans l'ouvrir, rien ne part chez Google (ni l'adresse IP du visiteur),
+ * et elles sont dans le précache : l'accueil garde sa police hors ligne.
+ *
+ * OUTFIT SEULE : c'est la police du texte et des titres de Butter
+ * (`--font-family-body`, `--font-family-heading`). Sarina ne sert qu'aux
+ * types `display-*`, et JetBrains Mono qu'au code ; l'accueil n'emploie ni
+ * les uns ni l'autre, leurs replis suffisent. Chaque `.woff2` émis entre dans
+ * le précache : on n'y met que ce qui s'affiche.
+ *
+ * LE NOM EST « Outfit », pas « Outfit Variable » comme le déclare
+ * `@fontsource-variable/outfit` : c'est celui que les jetons de Butter
+ * demandent, et le garder évite de les surcharger. Une police variable, un
+ * fichier par jeu de caractères, toutes les graisses (100 à 900).
+ */
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/outfit/files/outfit-latin-ext-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
