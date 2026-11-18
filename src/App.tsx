@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import {
   BrowserRouter,
   Link,
@@ -10,14 +11,27 @@ import { AppShell } from '@mister-guiiug/dev-pwa-config/react/app-shell';
 import { ObservabilityBoundary } from '@mister-guiiug/dev-pwa-config/react/error-boundary';
 import { ConnectionBanner } from '@mister-guiiug/dev-pwa-config/react/connection-banner';
 import { ConsentBanner } from '@mister-guiiug/dev-pwa-config/react/consent-banner';
+import { SkeletonGroup } from '@mister-guiiug/dev-pwa-config/react/skeleton';
+import { useIdlePrefetch } from '@mister-guiiug/dev-pwa-config/react/use-prefetch';
 import { usePageViews } from '@mister-guiiug/dev-pwa-config/react/use-page-views';
 import { AppUpdates } from '@mister-guiiug/dev-pwa-config/react/app-updates';
 import { registerSW } from 'virtual:pwa-register';
 import { useI18n } from './i18n/index.ts';
-import { HomeScreen } from './features/home/HomeScreen.tsx';
 import { SettingsScreen } from './features/settings/SettingsScreen.tsx';
 import { AboutScreen } from './features/about/AboutScreen.tsx';
 import { AccountScreen } from './features/account/AccountScreen.tsx';
+
+/**
+ * Accueil chargé à part : Astryx + thème Butter ne doivent pas grossir le
+ * chemin critique des écrans famille (réglages, compte). Voir ADR 0014.
+ * Le thunk est nommé une fois : `lazy()`, `useIdlePrefetch` et `items[].load`
+ * partagent la même promesse (exigence `pwa-doctor`).
+ */
+const loadHome = () => import('./features/home/HomeScreen.tsx');
+const HomeScreen = lazy(async () => {
+  const m = await loadHome();
+  return { default: m.HomeScreen };
+});
 
 /**
  * LE CADRE : `AppShell` du socle (en-tête, contenu borné, barre basse).
@@ -62,12 +76,16 @@ export function Shell() {
    */
   usePageViews(pathname);
 
+  /* Hors de l'accueil, précharge Astryx dès que le navigateur est au repos. */
+  useIdlePrefetch(loadHome, { enabled: pathname !== '/' });
+
   const nav = [
     {
       href: '/',
       label: t('nav.home'),
       icon: <Home aria-hidden="true" />,
       end: true,
+      load: loadHome,
     },
     {
       href: '/reglages',
@@ -150,17 +168,25 @@ export function Shell() {
         />
       }
     >
-      <Routes>
-        <Route path="/" element={<HomeScreen />} />
-        <Route path="/reglages" element={<SettingsScreen />} />
-        <Route path="/compte" element={<AccountScreen />} />
-        <Route path="/a-propos" element={<AboutScreen />} />
-        {/* Le repli de route rend l'accueil ; le repli de SERVEUR est le
-            `404.html` posé par `spaFallbackPlugin`. Les deux sont
-            nécessaires : sans le second, GitHub Pages sert sa propre page
-            d'erreur avant que ce routeur n'existe. */}
-        <Route path="*" element={<HomeScreen />} />
-      </Routes>
+      <Suspense
+        fallback={<SkeletonGroup label={t('home.loading')} lines={4} />}
+      >
+        {/* `key={pathname}` : remonte la zone au changement de route pour
+            que le repli Suspense soit visible quand le morceau lazy n'est
+            pas encore en cache (exigence `pwa-doctor` sur les routes
+            paresseuses). */}
+        <Routes key={pathname}>
+          <Route path="/" element={<HomeScreen />} />
+          <Route path="/reglages" element={<SettingsScreen />} />
+          <Route path="/compte" element={<AccountScreen />} />
+          <Route path="/a-propos" element={<AboutScreen />} />
+          {/* Le repli de route rend l'accueil ; le repli de SERVEUR est le
+              `404.html` posé par `spaFallbackPlugin`. Les deux sont
+              nécessaires : sans le second, GitHub Pages sert sa propre page
+              d'erreur avant que ce routeur n'existe. */}
+          <Route path="*" element={<HomeScreen />} />
+        </Routes>
+      </Suspense>
     </AppShell>
   );
 }

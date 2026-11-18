@@ -18,7 +18,7 @@ test.describe('@critical le cadre', () => {
     );
     await expect(page.getByTestId('contrib-calendar')).toBeVisible();
     await expect(
-      page.getByRole('heading', { level: 2, name: /contributions/ })
+      page.getByRole('heading', { level: 2, name: /contributions/i })
     ).toBeVisible();
     await expect(page.getByTestId('depots-total')).toBeVisible();
     await expect(page.locator('.contrib-home__stats')).toBeVisible();
