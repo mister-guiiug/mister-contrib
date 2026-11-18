@@ -11,7 +11,10 @@ import { butterTheme as _astryxTheme0 } from '@astryxdesign/theme-butter/built';
 import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
 import '@astryxdesign/theme-butter/theme.css';
-import '@astryxdesign/theme-butter/fonts.css';
+// PAS `@astryxdesign/theme-butter/fonts.css` : il charge Google Fonts, que la
+// CSP refuse. La police de Butter est servie par l'app (`astryx-fonts.css`).
+// À reporter si `astryx theme` régénère ce fichier.
+import './astryx-fonts.css';
 
 export const themes = {
   butter: _astryxTheme0,

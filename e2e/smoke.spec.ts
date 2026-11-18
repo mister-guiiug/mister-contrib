@@ -29,6 +29,50 @@ test.describe('@critical le cadre', () => {
     await expect(page.getByRole('heading', { name: /Pics / })).toBeVisible();
   });
 
+  test('l’accueil passe la CSP, et sa police est servie par l’app', async ({
+    page,
+  }) => {
+    // La police de Butter venait de Google Fonts
+    // (`@astryxdesign/theme-butter/fonts.css`) : la CSP la refusait, la
+    // vérification après déploiement échouait, et la police ne s'affichait
+    // jamais. Elle est servie par l'app (`src/astryx-fonts.css`) ; un
+    // `astryx theme` qui régénérerait l'import ferait rougir ce test.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __csp: string[] };
+      w.__csp = [];
+      document.addEventListener('securitypolicyviolation', e => {
+        w.__csp.push(`${e.violatedDirective} ${e.blockedURI}`);
+      });
+    });
+    const google: string[] = [];
+    page.on('request', r => {
+      if (/fonts\.(googleapis|gstatic)\.com/.test(r.url()))
+        google.push(r.url());
+    });
+
+    await page.goto('/');
+    await expect(page.getByTestId('contrib-calendar')).toBeVisible();
+    // `document.fonts.check()` répond vrai quand aucune police ne porte ce
+    // nom : on cherche la police elle-même, chargée.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          [...document.fonts].some(
+            f =>
+              f.family.replace(/["']/g, '') === 'Outfit' &&
+              f.status === 'loaded'
+          )
+        )
+      )
+      .toBe(true);
+    expect(google).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __csp: string[] }).__csp
+      )
+    ).toEqual([]);
+  });
+
   test('le calendrier ne nomme aucune forge', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByTestId('contrib-calendar')).toBeVisible();

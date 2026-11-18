@@ -129,8 +129,29 @@ body {
   --contrib-label: 1.55rem;
 }
 
+/*
+ * LE SEGMENT NON CHOISI DOIT SE LIRE. Astryx l'écrit en
+ * `--color-text-secondary` sur le voile du contrôle (`--color-neutral`, un
+ * dixième de clair en sombre) : 4,46:1 en thème sombre pour 4,5 exigés
+ * (axe, au téléphone — le sélecteur n'existe que là). Dans ce contrôle
+ * seulement, le gris secondaire est rapproché du texte principal : plus clair
+ * en sombre, plus foncé en clair (les deux jetons sont des `light-dark()`),
+ * environ 5,4:1 en sombre. Le segment choisi garde sa pastille.
+ *
+ * Le mélange se calcule sur le parent puis descend au contrôle : une propriété
+ * personnalisée ne peut pas se citer elle-même.
+ */
 .contrib-calendar__vues {
   margin-bottom: 0.75rem;
+  --contrib-vue-texte: color-mix(
+    in srgb,
+    var(--color-text-secondary) 75%,
+    var(--color-text-primary)
+  );
+}
+
+.contrib-calendar__vues > .astryx-segmented-control {
+  --color-text-secondary: var(--contrib-vue-texte);
 }
 
 .contrib-calendar__scroll {
